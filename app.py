@@ -430,9 +430,11 @@ TEMPLATES = {
 </head>
 <body class="overflow-x-hidden">
     <div class="hero text-center">
-        <h1 class="display-4 logo-text"><span>&lt;</span>DebtSweeper<span>&gt;</span></h1>
-        <p class="lead">Automated technical debt detection and remediation</p>
-    </div>
+      <div class="container">
+          <h1 class="display-4 logo-text"><span>&lt;</span>DebtSweeper<span>&gt;</span></h1>
+          <p class="lead">Automated technical debt detection and remediation</p>
+      </div>
+  </div>
 
     <div class="container py-4">
         <div class="row mb-5">
