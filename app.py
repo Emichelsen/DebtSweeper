@@ -27,7 +27,8 @@ TEMPLATES = {
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, 
+  user-scalable=no">
     <title>DebtSweeper Dashboard</title>
     <!-- Bootstrap CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
@@ -427,7 +428,7 @@ TEMPLATES = {
         }
     </style>
 </head>
-<body>
+<body class="overflow-x-hidden">
     <div class="hero text-center">
         <h1 class="display-4 logo-text"><span>&lt;</span>DebtSweeper<span>&gt;</span></h1>
         <p class="lead">Automated technical debt detection and remediation</p>
@@ -527,7 +528,8 @@ TEMPLATES = {
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, 
+  user-scalable=no">
     <title>Repository Scan - DebtSweeper</title>
     <!-- Bootstrap CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
@@ -934,7 +936,7 @@ TEMPLATES = {
         }
     </style>
 </head>
-<body>
+<body class="overflow-x-hidden">
     <nav class="navbar navbar-expand-lg navbar-dark">
         <div class="container">
             <a class="navbar-brand" href="/"><span>&lt;</span>DebtSweeper<span>&gt;</span></a>
@@ -1148,7 +1150,8 @@ TEMPLATES = {
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, 
+  user-scalable=no">
     <title>{{ file_path }} - DebtSweeper</title>
     <!-- Bootstrap CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
@@ -1627,7 +1630,7 @@ TEMPLATES = {
   }
     </style>
 </head>
-<body>
+<body class="overflow-x-hidden">
     <nav class="navbar navbar-expand-lg navbar-dark">
         <div class="container">
             <a class="navbar-brand" href="/"><span>&lt;</span>DebtSweeper<span>&gt;</span></a>
