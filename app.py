@@ -1561,6 +1561,70 @@ TEMPLATES = {
             max-height: 400px;
             overflow-y: auto;
         }
+
+        /* iPhone-specific fixes */
+  @media only screen and (max-width: 428px) {
+    /* Container padding */
+    .container {
+      padding-left: 10px !important;
+      padding-right: 10px !important;
+      width: 100% !important;
+      max-width: 100% !important;
+    }
+
+    /* Fix for oversized elements */
+    .row {
+      margin-left: -5px !important;
+      margin-right: -5px !important;
+    }
+
+    .col-md-4, .col-md-6, .col-md-8, .col-md-12 {
+      padding-left: 5px !important;
+      padding-right: 5px !important;
+    }
+
+    /* Text adjustments */
+    .logo-text {
+      font-size: 2rem !important;
+      word-break: keep-all;
+    }
+
+    h1 { font-size: 1.8rem !important; }
+    h2 { font-size: 1.5rem !important; }
+    h5 { font-size: 1.1rem !important; }
+    p { font-size: 0.9rem !important; }
+
+    /* Card fixes */
+    .card {
+      overflow: hidden;
+      width: 100% !important;
+    }
+
+    /* Force proper width */
+    body, html {
+      width: 100% !important;
+      overflow-x: hidden !important;
+    }
+
+    /* Prevent horizontal scrolling */
+    .overflow-x-hidden {
+      overflow-x: hidden !important;
+    }
+
+    /* Better button sizing for touch */
+    .btn {
+      display: block !important;
+      width: 100% !important;
+      margin-bottom: 10px !important;
+    }
+  }
+
+  /* Fix iOS Safari 100vh issue */
+  @supports (-webkit-touch-callout: none) {
+    .min-vh-100 {
+      min-height: -webkit-fill-available;
+    }
+  }
     </style>
 </head>
 <body>
