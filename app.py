@@ -436,12 +436,14 @@ TEMPLATES = {
               <span style="color: #3DDC84; text-shadow: 0 0 8px rgba(61, 220, 132, 0.41);">&lt;</span>DebtSweeper<span 
   style="color: #3DDC84; text-shadow: 0 0 8px rgba(61, 220, 132, 0.41);">&gt;</span>
           </h1>
-          <p class="lead">Automated technical debt detection and remediation</p>
+          <p style="font-size: 95%; margin-bottom: 1rem; font-weight: 300; line-height: 1.5;">Automated technical debt detection
+   and remediation</p>
       </div>
     </div
   
 
-    <div class="container py-4">
+    <div class="container py-4" style="padding-left: 15px; padding-right: 15px; max-width: 1140px; margin-left: auto; 
+  margin-right: auto;">
         <div class="row mb-5">
             <div class="col-md-6 offset-md-3">
                 <div class="card">
