@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 """
-Flask dashboard for DebtSweeper.
+Flask dashboard for DebtSweeper yay.
 
 Provides a web interface for visualizing debt scores and managing fixes.
 """
