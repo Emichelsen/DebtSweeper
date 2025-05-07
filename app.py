@@ -430,11 +430,16 @@ TEMPLATES = {
 </head>
 <body class="overflow-x-hidden">
     <div class="hero text-center">
-      <div class="container">
-          <h1 class="display-4 logo-text"><span>&lt;</span>DebtSweeper<span>&gt;</span></h1>
+      <div style="max-width: 100%; overflow: hidden; padding: 0 10px;">
+          <h1 style="font-size: calc(1.5rem + 1.5vw); font-weight: 700; letter-spacing: 1px; position: relative; color: 
+  #FFFFFF; text-shadow: 0 0 4px rgba(255, 255, 255, 0.24); word-break: break-word; white-space: normal;">
+              <span style="color: #3DDC84; text-shadow: 0 0 8px rgba(61, 220, 132, 0.41);">&lt;</span>DebtSweeper<span 
+  style="color: #3DDC84; text-shadow: 0 0 8px rgba(61, 220, 132, 0.41);">&gt;</span>
+          </h1>
           <p class="lead">Automated technical debt detection and remediation</p>
       </div>
-  </div>
+    </div
+  
 
     <div class="container py-4">
         <div class="row mb-5">
