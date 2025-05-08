@@ -298,6 +298,14 @@ body {
 .rounded-circle {
   transition: var(--transition);
   box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+  min-width: 40px;
+  min-height: 40px;
+  width: 40px !important;
+  height: 40px !important;
+  line-height: 40px;
+  text-align: center;
+  border-radius: 50% !important;
+  flex-shrink: 0;
 }
 
 .d-flex:hover .rounded-circle {
@@ -476,6 +484,15 @@ pre::before {
       display: inline-block;
       max-width: 100%;
     }
+    
+    /* Fix for how it works bullets on iOS */
+    .rounded-circle {
+      display: flex !important;
+      align-items: center !important;
+      justify-content: center !important;
+      transform: translateZ(0);
+      -webkit-transform: translateZ(0);
+    }
   }
 }
 """
@@ -560,23 +577,23 @@ TEMPLATES = {
             <div class="col-12">
                 <h2>How It Works</h2>
                 <div class="d-flex align-items-center mb-3">
-                    <div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;">1</div>
+                    <div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center">1</div>
                     <div class="ms-3">Upload your Python codebase as a zip file.</div>
                 </div>
                 <div class="d-flex align-items-center mb-3">
-                    <div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;">2</div>
+                    <div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center">2</div>
                     <div class="ms-3">DebtSweeper analyzes code structure and patterns to identify technical debt.</div>
                 </div>
                 <div class="d-flex align-items-center mb-3">
-                    <div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;">3</div>
+                    <div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center">3</div>
                     <div class="ms-3">Review debt items and their severity scores in an interactive dashboard.</div>
                 </div>
                 <div class="d-flex align-items-center mb-3">
-                    <div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;">4</div>
+                    <div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center">4</div>
                     <div class="ms-3">Select debt items to fix and get AI-generated refactoring suggestions.</div>
                 </div>
                 <div class="d-flex align-items-center">
-                    <div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;">5</div>
+                    <div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center">5</div>
                     <div class="ms-3">Apply patches to your codebase manually or through GitHub PRs.</div>
                 </div>
             </div>
