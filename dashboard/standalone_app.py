@@ -571,20 +571,6 @@ TEMPLATES = {
                 </div>
             </div>
         </div>
-        
-        <div class="row mb-4">
-            <div class="col-12">
-                <h2>Debt Knowledge Graph</h2>
-                <p class="mb-4">
-                    Visualize code dependencies and technical debt. Nodes represent functions and classes, 
-                    while edges show relationships. Node size indicates complexity, and color reflects test coverage.
-                </p>
-                <div id="debt-graph"></div>
-                <div class="mt-3">
-                    <small class="text-muted">Click on nodes to see detailed debt metrics. Drag to pan, scroll to zoom.</small>
-                </div>
-            </div>
-        </div>
 
         <div class="row mb-4">
             <div class="col-12">
@@ -620,6 +606,20 @@ TEMPLATES = {
                         <h5 class="card-title">Debt Metrics</h5>
                         <p class="card-text">Provides quantitative scores to track and prioritize debt reduction efforts over time.</p>
                     </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="row mb-5">
+            <div class="col-12">
+                <h2>Debt Knowledge Graph</h2>
+                <p class="mb-4">
+                    Visualize code dependencies and technical debt. Nodes represent functions and classes, 
+                    while edges show relationships. Node size indicates complexity, and color reflects test coverage.
+                </p>
+                <div id="debt-graph"></div>
+                <div class="mt-3">
+                    <small style="color: rgba(255, 255, 255, 0.8);">Click on nodes to see detailed debt metrics. Drag to pan, scroll to zoom.</small>
                 </div>
             </div>
         </div>
@@ -1612,20 +1612,88 @@ def render_template(template_name, **context):
 @app.route('/')
 def index():
     """Render the dashboard homepage."""
-    # For demo purposes, create a small mock graph
+    # Create a realistic mock graph that resembles a Python application
     mock_graph = {
         "nodes": [
-            {"data": {"id": "module1.func1", "label": "func1", "complexity": 12, "coverage": 65, "churn": 5, "type": "function"}},
-            {"data": {"id": "module1.func2", "label": "func2", "complexity": 8, "coverage": 75, "churn": 3, "type": "function"}},
-            {"data": {"id": "module2.func3", "label": "func3", "complexity": 15, "coverage": 45, "churn": 8, "type": "function"}},
-            {"data": {"id": "module2.Class1", "label": "Class1", "complexity": 5, "coverage": 90, "churn": 2, "type": "class"}},
-            {"data": {"id": "module2.Class1.method1", "label": "method1", "complexity": 3, "coverage": 95, "churn": 1, "type": "method"}}
+            # Core modules
+            {"data": {"id": "app.main", "label": "main", "complexity": 6, "coverage": 85, "churn": 15, "type": "function"}},
+            {"data": {"id": "app.config", "label": "config", "complexity": 4, "coverage": 90, "churn": 8, "type": "module"}},
+            {"data": {"id": "app.routes", "label": "routes", "complexity": 7, "coverage": 75, "churn": 12, "type": "module"}},
+            
+            # API module
+            {"data": {"id": "app.api.endpoints", "label": "endpoints", "complexity": 9, "coverage": 80, "churn": 18, "type": "module"}},
+            {"data": {"id": "app.api.handlers", "label": "handlers", "complexity": 12, "coverage": 65, "churn": 20, "type": "module"}},
+            {"data": {"id": "app.api.validators", "label": "validators", "complexity": 8, "coverage": 70, "churn": 12, "type": "module"}},
+            
+            # Database related
+            {"data": {"id": "app.db.models", "label": "models", "complexity": 5, "coverage": 95, "churn": 10, "type": "module"}},
+            {"data": {"id": "app.db.schema", "label": "schema", "complexity": 4, "coverage": 90, "churn": 6, "type": "module"}},
+            {"data": {"id": "app.db.queries", "label": "queries", "complexity": 11, "coverage": 60, "churn": 22, "type": "module"}},
+            {"data": {"id": "app.db.connection", "label": "connection", "complexity": 7, "coverage": 85, "churn": 9, "type": "module"}},
+            
+            # Auth module
+            {"data": {"id": "app.auth.Auth", "label": "Auth", "complexity": 10, "coverage": 75, "churn": 14, "type": "class"}},
+            {"data": {"id": "app.auth.Auth.login", "label": "login", "complexity": 14, "coverage": 50, "churn": 18, "type": "method"}},
+            {"data": {"id": "app.auth.Auth.validate", "label": "validate", "complexity": 18, "coverage": 45, "churn": 15, "type": "method"}},
+            {"data": {"id": "app.auth.Auth.logout", "label": "logout", "complexity": 3, "coverage": 95, "churn": 5, "type": "method"}},
+            {"data": {"id": "app.auth.permissions", "label": "permissions", "complexity": 9, "coverage": 70, "churn": 13, "type": "module"}},
+            
+            # Utils
+            {"data": {"id": "app.utils.formatters", "label": "formatters", "complexity": 6, "coverage": 80, "churn": 9, "type": "module"}},
+            {"data": {"id": "app.utils.helpers", "label": "helpers", "complexity": 5, "coverage": 85, "churn": 11, "type": "module"}},
+            {"data": {"id": "app.utils.logger", "label": "logger", "complexity": 3, "coverage": 90, "churn": 7, "type": "module"}},
+            
+            # Problem areas - high complexity, low coverage
+            {"data": {"id": "app.services.processor", "label": "processor", "complexity": 20, "coverage": 35, "churn": 25, "type": "module"}},
+            {"data": {"id": "app.services.analyzer", "label": "analyzer", "complexity": 17, "coverage": 40, "churn": 22, "type": "module"}},
+            {"data": {"id": "app.services.DataHandler", "label": "DataHandler", "complexity": 15, "coverage": 45, "churn": 19, "type": "class"}},
+            {"data": {"id": "app.services.DataHandler.process", "label": "process", "complexity": 25, "coverage": 30, "churn": 28, "type": "method"}},
+            {"data": {"id": "app.services.DataHandler.transform", "label": "transform", "complexity": 22, "coverage": 35, "churn": 24, "type": "method"}},
+            {"data": {"id": "app.services.DataHandler.validate", "label": "validate", "complexity": 16, "coverage": 50, "churn": 20, "type": "method"}}
         ],
         "edges": [
-            {"data": {"source": "module1.func1", "target": "module1.func2", "relation": "calls"}},
-            {"data": {"source": "module1.func2", "target": "module2.func3", "relation": "calls"}},
-            {"data": {"source": "module2.func3", "target": "module2.Class1.method1", "relation": "calls"}},
-            {"data": {"source": "module1.func1", "target": "module2.Class1", "relation": "imports"}}
+            # Main app connections
+            {"data": {"source": "app.main", "target": "app.config", "relation": "imports"}},
+            {"data": {"source": "app.main", "target": "app.routes", "relation": "imports"}},
+            {"data": {"source": "app.main", "target": "app.utils.logger", "relation": "imports"}},
+            {"data": {"source": "app.routes", "target": "app.api.endpoints", "relation": "imports"}},
+            {"data": {"source": "app.routes", "target": "app.auth.Auth", "relation": "imports"}},
+            
+            # API connections
+            {"data": {"source": "app.api.endpoints", "target": "app.api.handlers", "relation": "calls"}},
+            {"data": {"source": "app.api.handlers", "target": "app.api.validators", "relation": "calls"}},
+            {"data": {"source": "app.api.handlers", "target": "app.services.processor", "relation": "calls"}},
+            {"data": {"source": "app.api.handlers", "target": "app.auth.Auth.validate", "relation": "calls"}},
+            {"data": {"source": "app.api.validators", "target": "app.utils.formatters", "relation": "calls"}},
+            
+            # Database relationships
+            {"data": {"source": "app.api.handlers", "target": "app.db.queries", "relation": "calls"}},
+            {"data": {"source": "app.db.queries", "target": "app.db.connection", "relation": "calls"}},
+            {"data": {"source": "app.db.queries", "target": "app.db.models", "relation": "imports"}},
+            {"data": {"source": "app.db.models", "target": "app.db.schema", "relation": "imports"}},
+            
+            # Auth module relationships
+            {"data": {"source": "app.auth.Auth.login", "target": "app.db.queries", "relation": "calls"}},
+            {"data": {"source": "app.auth.Auth.validate", "target": "app.auth.permissions", "relation": "calls"}},
+            {"data": {"source": "app.auth.permissions", "target": "app.db.models", "relation": "imports"}},
+            
+            # Service module relationships - problem area
+            {"data": {"source": "app.services.processor", "target": "app.services.analyzer", "relation": "calls"}},
+            {"data": {"source": "app.services.processor", "target": "app.services.DataHandler", "relation": "calls"}},
+            {"data": {"source": "app.services.DataHandler.process", "target": "app.services.DataHandler.transform", "relation": "calls"}},
+            {"data": {"source": "app.services.DataHandler.transform", "target": "app.services.DataHandler.validate", "relation": "calls"}},
+            {"data": {"source": "app.services.DataHandler.process", "target": "app.utils.logger", "relation": "calls"}},
+            {"data": {"source": "app.services.analyzer", "target": "app.utils.helpers", "relation": "calls"}},
+            
+            # Utils relationships
+            {"data": {"source": "app.utils.formatters", "target": "app.utils.helpers", "relation": "calls"}},
+            {"data": {"source": "app.routes", "target": "app.utils.formatters", "relation": "calls"}},
+            {"data": {"source": "app.utils.logger", "target": "app.utils.formatters", "relation": "calls"}},
+            
+            # Additional connections to show complex dependencies
+            {"data": {"source": "app.services.analyzer", "target": "app.db.queries", "relation": "calls"}},
+            {"data": {"source": "app.api.endpoints", "target": "app.utils.helpers", "relation": "calls"}},
+            {"data": {"source": "app.services.DataHandler.validate", "target": "app.api.validators", "relation": "calls"}}
         ]
     }
     
