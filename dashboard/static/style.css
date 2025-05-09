@@ -417,6 +417,11 @@ pre::before {
     margin: 5px 0;
   }
 
+  /* Add more spacing between panels on mobile */
+  .col-md-3 {
+    margin-top: 20px;
+  }
+
   /* Make How It Works circles perfectly round */
   .rounded-circle {
     width: 40px !important;
