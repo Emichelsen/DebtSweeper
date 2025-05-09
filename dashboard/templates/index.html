@@ -10,6 +10,55 @@
     <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;700&display=swap" rel="stylesheet">
     <!-- Custom CSS -->
     <link href="{{ url_for('static', filename='style.css') }}" rel="stylesheet">
+    
+    <!-- Multiple sources for Cytoscape to ensure it loads -->
+    <script>
+        // Flag to track if Cytoscape loaded successfully
+        window.cytoscapeLoaded = false;
+    </script>
+    
+    <!-- Primary CDN -->
+    <script src="https://unpkg.com/cytoscape@3.23.0/dist/cytoscape.min.js" 
+            onerror="console.error('Primary CDN failed');"
+            onload="window.cytoscapeLoaded = true; console.log('Cytoscape loaded from primary CDN');">
+    </script>
+    
+    <!-- Fallback CDN if the first one fails -->
+    <script>
+        setTimeout(function() {
+            if (!window.cytoscapeLoaded) {
+                console.log("Trying fallback CDN");
+                var script = document.createElement('script');
+                script.src = "https://cdnjs.cloudflare.com/ajax/libs/cytoscape/3.23.0/cytoscape.min.js";
+                script.onload = function() {
+                    window.cytoscapeLoaded = true; 
+                    console.log('Cytoscape loaded from fallback CDN');
+                };
+                script.onerror = function() {
+                    console.error('Fallback CDN failed');
+                };
+                document.head.appendChild(script);
+            }
+        }, 500);
+    </script>
+    
+    <!-- Local fallback if both CDNs fail -->
+    <script>
+        setTimeout(function() {
+            if (!window.cytoscapeLoaded) {
+                console.log("Trying local fallback");
+                var script = document.createElement('script');
+                script.src = "{{ url_for('static', filename='cytoscape.min.js') }}";
+                script.onload = function() {
+                    console.log('Cytoscape loaded from local file');
+                };
+                script.onerror = function() {
+                    console.error('Local fallback failed');
+                };
+                document.head.appendChild(script);
+            }
+        }, 1000);
+    </script>
 </head>
 <body>
     <div class="hero text-center">
@@ -69,6 +118,128 @@
                 </div>
             </div>
         </div>
+        
+        <!-- Debt Knowledge Graph with Legend -->
+        <div class="row mb-5">
+            <div class="col-md-9 mb-md-0 mb-3">
+                <div class="card">
+                    <div class="card-header bg-dark text-white" style="border-bottom: 1px solid #555;">
+                        <h5 class="mb-0">Debt Knowledge Graph</h5>
+                    </div>
+                    <div class="card-body p-0">
+                        <div id="graph-container" style="width: 100%; height: 450px; background: #111; border: 1px solid #444; margin-bottom: 0; border-radius: 0 0 5px 5px; overflow: hidden; display: block; position: relative;">
+                            <!-- Graph will be rendered here -->
+                        </div>
+                    </div>
+                    <div class="card-footer bg-dark" style="border-top: 1px solid #444; padding: 8px;">
+                        <div class="d-flex justify-content-center">
+                            <button class="graph-btn btn btn-sm m-1" id="reset-view">Reset View</button>
+                            <button class="graph-btn btn btn-sm m-1" id="fit-view">Fit to View</button>
+                            <button class="graph-btn btn btn-sm m-1" id="toggle-labels">Hide Labels</button>
+                            <button class="graph-btn btn btn-sm m-1" id="layout-circle">Circle Layout</button>
+                            <button class="graph-btn btn btn-sm m-1" id="layout-cose">COSE Layout</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Legend and Metrics -->
+            <div class="col-md-3">
+                <div class="card mb-3">
+                    <div class="card-header bg-dark text-white" style="border-bottom: 1px solid #555;">
+                        <h5 class="mb-0">Legend</h5>
+                    </div>
+                    <div class="card-body" style="background: #111; color: #ddd; font-family: 'JetBrains Mono', monospace; font-size: 13px;">
+                        <div class="mb-3">
+                            <div class="d-flex align-items-center mb-2">
+                                <div style="width: 12px; height: 12px; border: 0.5px solid #3DDC84; border-radius: 50%; margin-right: 10px;"></div>
+                                <span>High Coverage (>80%)</span>
+                            </div>
+                            <div class="d-flex align-items-center mb-2">
+                                <div style="width: 12px; height: 12px; border: 0.5px solid #FFC107; border-radius: 50%; margin-right: 10px;"></div>
+                                <span>Medium Coverage (50-80%)</span>
+                            </div>
+                            <div class="d-flex align-items-center">
+                                <div style="width: 12px; height: 12px; border: 0.5px solid #e84118; border-radius: 50%; margin-right: 10px;"></div>
+                                <span>Low Coverage (<50%)</span>
+                            </div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <div class="d-flex align-items-center mb-2">
+                                <div style="width: 12px; height: 12px; border: 0.5px solid #ddd; border-radius: 50%; margin-right: 10px;"></div>
+                                <span>Size = Complexity</span>
+                            </div>
+                            <div class="d-flex align-items-center mb-2">
+                                <svg width="30" height="10">
+                                    <line x1="0" y1="5" x2="25" y2="5" stroke="#777" stroke-width="0.5" />
+                                    <polygon points="25,5 22,3 22,7" fill="#777" stroke="#777" stroke-width="0.5" />
+                                </svg>
+                                <span class="ms-1">Function Calls</span>
+                            </div>
+                            <div class="d-flex align-items-center">
+                                <svg width="30" height="10">
+                                    <line x1="0" y1="5" x2="25" y2="5" stroke="#666" stroke-width="0.5" stroke-dasharray="3,2" />
+                                    <polygon points="25,5 22,3 22,7" fill="#666" stroke="#666" stroke-width="0.5" />
+                                </svg>
+                                <span class="ms-1">Imports</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="card">
+                    <div class="card-header bg-dark text-white" style="border-bottom: 1px solid #555;">
+                        <h5 class="mb-0">Metrics</h5>
+                    </div>
+                    <div class="card-body" style="background: #111; color: #ddd; font-family: 'JetBrains Mono', monospace; font-size: 13px;">
+                        <div class="mb-2">
+                            <div class="fw-bold mb-1">Modularity</div>
+                            <div class="progress mb-1" style="height: 6px; background: #222;">
+                                <div class="progress-bar bg-success" style="width: 75%;"></div>
+                            </div>
+                            <div class="d-flex justify-content-between">
+                                <small>Score: 0.75</small>
+                                <small>Good</small>
+                            </div>
+                        </div>
+                        
+                        <div class="mb-2">
+                            <div class="fw-bold mb-1">Duplication</div>
+                            <div class="progress mb-1" style="height: 6px; background: #222;">
+                                <div class="progress-bar bg-warning" style="width: 35%;"></div>
+                            </div>
+                            <div class="d-flex justify-content-between">
+                                <small>Score: 0.35</small>
+                                <small>Medium</small>
+                            </div>
+                        </div>
+                        
+                        <div class="mb-2">
+                            <div class="fw-bold mb-1">Complexity</div>
+                            <div class="progress mb-1" style="height: 6px; background: #222;">
+                                <div class="progress-bar bg-info" style="width: 60%;"></div>
+                            </div>
+                            <div class="d-flex justify-content-between">
+                                <small>Score: 0.60</small>
+                                <small>Medium</small>
+                            </div>
+                        </div>
+                        
+                        <div>
+                            <div class="fw-bold mb-1">Debt Density</div>
+                            <div class="progress mb-1" style="height: 6px; background: #222;">
+                                <div class="progress-bar bg-danger" style="width: 45%;"></div>
+                            </div>
+                            <div class="d-flex justify-content-between">
+                                <small>Score: 0.45</small>
+                                <small>Medium</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
 
         <div class="row">
             <div class="col-12">
@@ -105,5 +276,281 @@
 
     <!-- Bootstrap JS and dependencies -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <!-- Graph initialization -->
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Wait for Cytoscape to be available
+            var checkCytoscape = function() {
+                if (typeof cytoscape !== 'undefined') {
+                    initializeGraph();
+                } else {
+                    // Check again in 100ms - wait for async loading
+                    setTimeout(checkCytoscape, 100);
+                }
+            };
+            
+            // Start checking
+            checkCytoscape();
+            
+            // Initialize graph once Cytoscape is loaded
+            function initializeGraph() {
+                try {
+                    // Create mock data
+                    const graphData = {
+                        nodes: [
+                            // Core modules
+                            {data: {id: "debtsweeper.main", label: "main()", complexity: 6, coverage: 85, churn: 15, type: "function", color: "#3DDC84", size: 40}},
+                            {data: {id: "debtsweeper.config", label: "config", complexity: 3, coverage: 90, churn: 5, type: "module", color: "#3DDC84", size: 35}},
+                            {data: {id: "debtsweeper.database", label: "database", complexity: 4, coverage: 75, churn: 12, type: "module", color: "#FFC107", size: 38}},
+                            
+                            // Models
+                            {data: {id: "debtsweeper.models.CodeFile", label: "CodeFile", complexity: 8, coverage: 65, churn: 18, type: "class", color: "#FFC107", size: 45}},
+                            {data: {id: "debtsweeper.models.CodeFile.analyze_debt", label: "analyze_debt()", complexity: 5, coverage: 80, churn: 7, type: "method", color: "#3DDC84", size: 40}},
+                            {data: {id: "debtsweeper.models.DebtItem", label: "DebtItem", complexity: 7, coverage: 40, churn: 15, type: "class", color: "#e84118", size: 43}},
+                            {data: {id: "debtsweeper.models.DebtItem.get_severity", label: "get_severity()", complexity: 9, coverage: 30, churn: 20, type: "method", color: "#e84118", size: 48}},
+                            
+                            // Analysis tools
+                            {data: {id: "debtsweeper.analysis", label: "analysis", complexity: 6, coverage: 70, churn: 10, type: "module", color: "#FFC107", size: 40}},
+                            {data: {id: "debtsweeper.analysis.detect_complexity", label: "detect_complexity()", complexity: 7, coverage: 75, churn: 8, type: "function", color: "#FFC107", size: 42}},
+                            {data: {id: "debtsweeper.analysis.check_duplication", label: "check_duplication()", complexity: 2, coverage: 90, churn: 3, type: "function", color: "#3DDC84", size: 33}},
+                            {data: {id: "debtsweeper.fixes", label: "fixes", complexity: 5, coverage: 60, churn: 14, type: "module", color: "#FFC107", size: 40}},
+                            {data: {id: "debtsweeper.fixes.generate_refactoring", label: "generate_refactoring()", complexity: 8, coverage: 45, churn: 16, type: "function", color: "#e84118", size: 45}},
+                            
+                            // Utils
+                            {data: {id: "debtsweeper.utils.logging", label: "logging", complexity: 4, coverage: 85, churn: 6, type: "module", color: "#3DDC84", size: 38}},
+                            {data: {id: "debtsweeper.utils.ast_analyzer", label: "ast_analyzer", complexity: 10, coverage: 35, churn: 22, type: "module", color: "#e84118", size: 50}}
+                        ],
+                        edges: [
+                            // Main dependencies
+                            {data: {source: "debtsweeper.main", target: "debtsweeper.config", relationship: "imports"}},
+                            {data: {source: "debtsweeper.main", target: "debtsweeper.database", relationship: "imports"}},
+                            {data: {source: "debtsweeper.main", target: "debtsweeper.analysis", relationship: "imports"}},
+                            {data: {source: "debtsweeper.main", target: "debtsweeper.fixes", relationship: "imports"}},
+                            
+                            // Analysis tool calls
+                            {data: {source: "debtsweeper.analysis.detect_complexity", target: "debtsweeper.models.CodeFile.analyze_debt", relationship: "calls"}},
+                            {data: {source: "debtsweeper.analysis.detect_complexity", target: "debtsweeper.utils.logging", relationship: "calls"}},
+                            {data: {source: "debtsweeper.analysis.check_duplication", target: "debtsweeper.utils.logging", relationship: "calls"}},
+                            
+                            // Fix generator calls
+                            {data: {source: "debtsweeper.fixes.generate_refactoring", target: "debtsweeper.models.DebtItem.get_severity", relationship: "calls"}},
+                            {data: {source: "debtsweeper.fixes.generate_refactoring", target: "debtsweeper.utils.ast_analyzer", relationship: "calls"}},
+                            
+                            // Model dependencies
+                            {data: {source: "debtsweeper.models.CodeFile.analyze_debt", target: "debtsweeper.database", relationship: "calls"}},
+                            {data: {source: "debtsweeper.models.DebtItem.get_severity", target: "debtsweeper.utils.ast_analyzer", relationship: "calls"}},
+                            
+                            // Module relationships
+                            {data: {source: "debtsweeper.models.CodeFile", target: "debtsweeper.models.CodeFile.analyze_debt", relationship: "contains"}},
+                            {data: {source: "debtsweeper.models.DebtItem", target: "debtsweeper.models.DebtItem.get_severity", relationship: "contains"}}
+                        ]
+                    };
+                    
+                    // Initialize Cytoscape
+                    const cy = cytoscape({
+                        container: document.getElementById('graph-container'),
+                        elements: graphData,
+                        style: [
+                            {
+                                selector: 'node',
+                                style: {
+                                    'width': 'data(size)',
+                                    'height': 'data(size)',
+                                    'background-color': 'transparent',
+                                    'border-width': 0.5, /* Thinner borders as requested */
+                                    'border-color': 'data(color)',
+                                    'label': 'data(label)',
+                                    'color': '#ddd',
+                                    'text-outline-width': 1, /* Thinner text outline */
+                                    'text-outline-color': '#111',
+                                    'font-size': '13px', /* Slightly smaller font */
+                                    'font-family': 'JetBrains Mono, monospace', /* Use JetBrains Mono for labels */
+                                    'text-valign': 'center',
+                                    'text-halign': 'center',
+                                    'z-index': 10
+                                }
+                            },
+                            {
+                                selector: 'edge',
+                                style: {
+                                    'width': 0.5, /* Thinner edges */
+                                    'line-color': '#555',
+                                    'target-arrow-color': '#555',
+                                    'target-arrow-shape': 'triangle',
+                                    'target-arrow-size': 5, /* Smaller arrow */
+                                    'curve-style': 'bezier',
+                                    'opacity': 0.6,
+                                    'z-index': 1
+                                }
+                            },
+                            {
+                                selector: 'edge[relationship = "imports"]',
+                                style: {
+                                    'line-style': 'dashed',
+                                    'line-dash-pattern': [6, 3],
+                                    'line-color': '#666'
+                                }
+                            },
+                            {
+                                selector: 'edge[relationship = "calls"]',
+                                style: {
+                                    'line-color': '#777'
+                                }
+                            },
+                            {
+                                selector: 'edge[relationship = "contains"]',
+                                style: {
+                                    'line-color': '#666',
+                                    'target-arrow-shape': 'none',
+                                    'opacity': 0.5
+                                }
+                            },
+                            {
+                                selector: 'node[type = "module"]',
+                                style: {
+                                    'shape': 'rectangle',
+                                    'background-color': 'transparent',
+                                    'border-width': 1,
+                                    'border-color': 'data(color)'
+                                }
+                            },
+                            {
+                                selector: 'node[type = "class"]',
+                                style: {
+                                    'shape': 'roundrectangle',
+                                    'background-color': 'transparent',
+                                    'border-width': 1,
+                                    'border-color': 'data(color)'
+                                }
+                            },
+                            {
+                                selector: 'node[type = "external_module"]',
+                                style: {
+                                    'shape': 'diamond',
+                                    'background-color': 'transparent',
+                                    'border-width': 1,
+                                    'border-color': '#777'
+                                }
+                            },
+                            {
+                                selector: 'node:selected',
+                                style: {
+                                    'border-width': 2,
+                                    'border-color': '#aaa',
+                                    'border-opacity': 0.8
+                                }
+                            }
+                        ],
+                        layout: {
+                            name: 'cose',
+                            animate: false,
+                            nodeRepulsion: 800000,
+                            idealEdgeLength: 100,
+                            numIter: 1000,
+                            padding: 30
+                        }
+                    });
+                    
+                    // Button actions
+                    document.getElementById('reset-view').addEventListener('click', function() {
+                        cy.reset();
+                    });
+                    
+                    document.getElementById('fit-view').addEventListener('click', function() {
+                        cy.fit();
+                    });
+                    
+                    // Variable to track label state
+                    let labelsVisible = true;
+                    
+                    document.getElementById('toggle-labels').addEventListener('click', function() {
+                        if (labelsVisible) {
+                            // Hide labels
+                            cy.style()
+                                .selector('node')
+                                .style('label', '')
+                                .update();
+                            this.textContent = 'Show Labels';
+                            labelsVisible = false;
+                        } else {
+                            // Show labels
+                            cy.style()
+                                .selector('node')
+                                .style('label', 'data(label)')
+                                .update();
+                            this.textContent = 'Hide Labels';
+                            labelsVisible = true;
+                        }
+                    });
+                    
+                    document.getElementById('layout-circle').addEventListener('click', function() {
+                        const layout = cy.layout({
+                            name: 'circle',
+                            padding: 50,
+                            animate: true,
+                            animationDuration: 500
+                        });
+                        layout.run();
+                    });
+                    
+                    document.getElementById('layout-cose').addEventListener('click', function() {
+                        const layout = cy.layout({
+                            name: 'cose',
+                            animate: false,
+                            nodeRepulsion: 800000,
+                            idealEdgeLength: 100,
+                            numIter: 1000,
+                            padding: 30
+                        });
+                        layout.run();
+                    });
+                    
+                    console.log('Graph visualization initialized successfully');
+                    
+                } catch (error) {
+                    console.error("Error initializing graph:", error);
+                    
+                    // Create a static fallback visualization
+                    document.getElementById('graph-container').innerHTML = `
+                        <div style="height: 100%; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; padding: 20px;">
+                            <h3 style="color: #ddd;">Debt Knowledge Graph</h3>
+                            <div style="width: 80%; height: 300px; margin: 10px auto; position: relative; overflow: hidden; border: 1px solid #444; border-radius: 5px; background: #0d0d0d;">
+                              <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);">
+                                <!-- Mock graph nodes with proper styling and thinner borders -->
+                                <div style="width: 40px; height: 40px; border: 0.5px solid #3DDC84; border-radius: 50%; position: absolute; top: 50px; left: 100px; background: transparent;"></div>
+                                <div style="width: 30px; height: 30px; border: 0.5px solid #FFC107; border-radius: 50%; position: absolute; top: 30px; left: 180px; background: transparent;"></div>
+                                <div style="width: 45px; height: 45px; border: 0.5px solid #e84118; border-radius: 50%; position: absolute; top: -20px; left: 140px; background: transparent;"></div>
+                                <div style="width: 35px; height: 35px; border: 0.5px solid #3DDC84; border-radius: 50%; position: absolute; top: 90px; left: 70px; background: transparent;"></div>
+                                <div style="width: 38px; height: 38px; border: 0.5px solid #FFC107; border-radius: 50%; position: absolute; top: 80px; left: 160px; background: transparent;"></div>
+                                
+                                <!-- Add a rectangle node for module -->
+                                <div style="width: 50px; height: 35px; border: 0.5px solid #3DDC84; position: absolute; top: 140px; left: 110px; background: transparent;"></div>
+                                
+                                <!-- Add some mock connections with thinner lines -->
+                                <svg width="300" height="300" style="position: absolute; top: -100px; left: -10px; z-index: -1;">
+                                  <line x1="120" y1="70" x2="180" y2="45" stroke="#777" stroke-width="0.5" />
+                                  <line x1="120" y1="70" x2="140" y2="0" stroke="#777" stroke-width="0.5" />
+                                  <line x1="180" y1="45" x2="140" y2="0" stroke="#666" stroke-width="0.5" stroke-dasharray="3,2" />
+                                  <line x1="87" y1="107" x2="120" y2="70" stroke="#777" stroke-width="0.5" />
+                                  <line x1="87" y1="107" x2="178" y2="98" stroke="#777" stroke-width="0.5" />
+                                  <line x1="135" y1="157" x2="87" y2="107" stroke="#777" stroke-width="0.5" />
+                                  <line x1="135" y1="157" x2="178" y2="98" stroke="#666" stroke-width="0.5" stroke-dasharray="3,2" />
+                                </svg>
+                              </div>
+                            </div>
+                        </div>
+                    `;
+                    
+                    // Make the buttons non-functional but keep them for UI consistency
+                    document.querySelectorAll('#reset-view, #fit-view, #toggle-labels, #layout-circle, #layout-cose').forEach(button => {
+                        button.disabled = true;
+                        button.style.opacity = '0.5';
+                        button.style.cursor = 'not-allowed';
+                    });
+                }
+            }
+        });
+    </script>
 </body>
 </html>

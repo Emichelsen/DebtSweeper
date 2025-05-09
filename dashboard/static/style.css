@@ -177,44 +177,9 @@ body {
   overflow: hidden;
 }
 
-.debt-card::after {
-  content: "";
-  position: absolute;
-  top: -50%;
-  left: -50%;
-  width: 200%;
-  height: 200%;
-  background: linear-gradient(
-    transparent,
-    rgba(61, 220, 132, 0.2),
-    transparent
-  );
-  transform: rotate(30deg);
-  transition: var(--transition);
-  opacity: 0;
-}
-
 .debt-card:hover {
   transform: translateY(-5px);
   box-shadow: 0 15px 30px rgba(61, 220, 132, 0.2);
-}
-
-.debt-card:hover::after {
-  animation: card-shine 1.5s ease forwards;
-}
-
-@keyframes card-shine {
-  0% {
-    opacity: 0;
-    left: -50%;
-  }
-  50% {
-    opacity: 1;
-  }
-  100% {
-    opacity: 0;
-    left: 150%;
-  }
 }
 
 /* Button styles */
@@ -396,10 +361,34 @@ pre::before {
   background: #0088cc;
 }
 
+/* Graph control buttons with mint green hover effect */
+.graph-btn {
+  background: #222;
+  color: #ddd;
+  border: 1px solid #444;
+  transition: all 0.2s ease;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+}
+
+.graph-btn:hover {
+  background: var(--primary-color);
+  color: #000;
+  border-color: var(--primary-color);
+  transform: translateY(-2px);
+  box-shadow: 0 2px 8px rgba(61, 220, 132, 0.4);
+}
+
+.graph-btn:active {
+  transform: translateY(0);
+  box-shadow: 0 1px 3px rgba(61, 220, 132, 0.4);
+}
+
 /* Mobile responsiveness fixes */
 @media (max-width: 767px) {
+  /* Make the logo 20% smaller on mobile as requested */
   .logo-text {
-    font-size: 2.8rem; /* Reduced size for mobile */
+    font-size: 2.24rem; /* Further reduced by 20% from 2.8rem */
     padding: 0 10px;
   }
 
@@ -416,6 +405,7 @@ pre::before {
   .card {
     margin-left: 5px;
     margin-right: 5px;
+    margin-bottom: 15px; /* Add consistent spacing between cards */
   }
   
   .card-body {
@@ -425,6 +415,19 @@ pre::before {
   /* Ensure buttons don't stretch to edges */
   .btn {
     margin: 5px 0;
+  }
+
+  /* Make How It Works circles perfectly round */
+  .rounded-circle {
+    width: 40px !important;
+    height: 40px !important;
+    min-width: 40px !important; /* Ensure fixed width */
+    min-height: 40px !important; /* Ensure fixed height */
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    border-radius: 50% !important; /* Ensure perfect circle */
+    flex-shrink: 0; /* Prevent shrinking */
   }
 
   /* Fix for iPhone portrait mode specific issues */
