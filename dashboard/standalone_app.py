@@ -12,8 +12,11 @@ import os
 import json
 import tempfile
 import zipfile
+import ast
+import subprocess
+import networkx as nx
 from pathlib import Path
-from typing import Dict, List, Any, Optional
+from typing import Dict, List, Any, Optional, Tuple
 
 from flask import Flask, request, jsonify, send_file, redirect, url_for
 
@@ -509,9 +512,43 @@ TEMPLATES = {
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
     <!-- Google Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <!-- Cytoscape.js -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/cytoscape/3.23.0/cytoscape.min.js"></script>
     <!-- Custom CSS -->
     <style>
     {{css}}
+    
+    /* Cytoscape container styles */
+    #debt-graph {
+        width: 100%;
+        height: 600px;
+        background-color: rgba(0, 0, 0, 0.6);
+        border: 1px solid var(--primary-color);
+        border-radius: 10px;
+        overflow: hidden;
+        box-shadow: var(--box-shadow);
+    }
+    
+    /* Node tooltip styles */
+    .cy-tooltip {
+        position: absolute;
+        background-color: #000;
+        border: 1px solid var(--primary-color);
+        color: #fff;
+        padding: 12px;
+        border-radius: 5px;
+        z-index: 1000;
+        font-size: 14px;
+        box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+        max-width: 300px;
+        pointer-events: none;
+    }
+    
+    @media (max-width: 767px) {
+        #debt-graph {
+            height: 450px;
+        }
+    }
     </style>
 </head>
 <body>
@@ -531,6 +568,20 @@ TEMPLATES = {
                         <p>Upload a zipped repository to analyze its technical debt.</p>
                         <a href="/scan" class="btn btn-primary w-100">Start New Analysis</a>
                     </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="row mb-4">
+            <div class="col-12">
+                <h2>Debt Knowledge Graph</h2>
+                <p class="mb-4">
+                    Visualize code dependencies and technical debt. Nodes represent functions and classes, 
+                    while edges show relationships. Node size indicates complexity, and color reflects test coverage.
+                </p>
+                <div id="debt-graph"></div>
+                <div class="mt-3">
+                    <small class="text-muted">Click on nodes to see detailed debt metrics. Drag to pan, scroll to zoom.</small>
                 </div>
             </div>
         </div>
@@ -608,6 +659,174 @@ TEMPLATES = {
 
     <!-- Bootstrap JS and dependencies -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <!-- Debt Graph Visualization -->
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Parse the graph data from the template
+        const graphData = JSON.parse('{{ graph_json|safe }}');
+        
+        // Create a tooltip element
+        const tooltip = document.createElement('div');
+        tooltip.className = 'cy-tooltip';
+        tooltip.style.display = 'none';
+        document.body.appendChild(tooltip);
+        
+        // Initialize Cytoscape
+        const cy = cytoscape({
+            container: document.getElementById('debt-graph'),
+            elements: [...graphData.nodes, ...graphData.edges],
+            style: [
+                {
+                    selector: 'node',
+                    style: {
+                        'label': 'data(label)',
+                        'background-color': function(ele) {
+                            // Map coverage to color (green to red)
+                            const coverage = ele.data('coverage');
+                            if (coverage >= 80) return '#3DDC84'; // High coverage (green)
+                            if (coverage >= 50) return '#FFC107'; // Medium coverage (yellow)
+                            return '#E84118';                     // Low coverage (red)
+                        },
+                        'width': function(ele) {
+                            // Map complexity to size
+                            const complexity = ele.data('complexity');
+                            return 20 + Math.min(complexity * 2, 50); // Base size + complexity factor (capped)
+                        },
+                        'height': function(ele) {
+                            // Map complexity to size
+                            const complexity = ele.data('complexity');
+                            return 20 + Math.min(complexity * 2, 50); // Base size + complexity factor (capped)
+                        },
+                        'font-size': '10px',
+                        'color': '#FFFFFF',
+                        'text-valign': 'center',
+                        'text-halign': 'center',
+                        'text-outline-width': 1,
+                        'text-outline-color': '#000000',
+                        'border-width': 2,
+                        'border-color': '#000000'
+                    }
+                },
+                {
+                    selector: 'node[type="class"]',
+                    style: {
+                        'shape': 'rectangle',
+                        'background-color': '#4B7BEC'
+                    }
+                },
+                {
+                    selector: 'node[type="method"]',
+                    style: {
+                        'shape': 'round-rectangle'
+                    }
+                },
+                {
+                    selector: 'edge',
+                    style: {
+                        'width': 2,
+                        'line-color': function(ele) {
+                            // Different colors for different relation types
+                            const relation = ele.data('relation');
+                            if (relation === 'calls') return '#3DDC84';
+                            if (relation === 'imports') return '#FFC107';
+                            return '#AAAAAA';
+                        },
+                        'target-arrow-shape': 'triangle',
+                        'target-arrow-color': function(ele) {
+                            // Match arrow color to line color
+                            const relation = ele.data('relation');
+                            if (relation === 'calls') return '#3DDC84';
+                            if (relation === 'imports') return '#FFC107';
+                            return '#AAAAAA';
+                        },
+                        'curve-style': 'bezier'
+                    }
+                },
+                {
+                    selector: 'edge[relation="calls"]',
+                    style: {
+                        'line-style': 'solid'
+                    }
+                },
+                {
+                    selector: 'edge[relation="imports"]',
+                    style: {
+                        'line-style': 'dashed'
+                    }
+                }
+            ],
+            layout: {
+                name: 'cose',
+                nodeDimensionsIncludeLabels: true,
+                animate: false,
+                fit: true,
+                padding: 50
+            }
+        });
+        
+        // Add tap handler for nodes (show tooltip with details)
+        cy.on('tap', 'node', function(evt) {
+            const node = evt.target;
+            const data = node.data();
+            
+            // Format the tooltip content
+            let content = `
+                <strong>${data.label}</strong> (${data.type})<br>
+                <hr style="margin: 5px 0; border-color: var(--primary-color)">
+                <strong>Complexity:</strong> ${data.complexity}<br>
+                <strong>Test Coverage:</strong> ${data.coverage}%<br>
+                <strong>Code Churn:</strong> ${data.churn} commits<br>
+            `;
+            
+            // Position and show the tooltip
+            tooltip.innerHTML = content;
+            tooltip.style.display = 'block';
+            
+            // Position near the node but not directly on top
+            const position = node.renderedPosition();
+            const nodeWidth = node.renderedWidth();
+            
+            tooltip.style.left = (position.x + nodeWidth/2 + 10) + 'px';
+            tooltip.style.top = (position.y - 30) + 'px';
+        });
+        
+        // Hide tooltip when clicking elsewhere
+        cy.on('tap', function(evt) {
+            if (evt.target === cy) {
+                tooltip.style.display = 'none';
+            }
+        });
+        
+        // Add responsive features
+        cy.userZoomingEnabled(true);
+        cy.userPanningEnabled(true);
+        cy.boxSelectionEnabled(true);
+        
+        // Add double tap to zoom on mobile
+        let tappedBefore;
+        let tappedTimeout;
+        
+        cy.on('tap', function(event) {
+            if (tappedTimeout && tappedBefore) {
+                clearTimeout(tappedTimeout);
+                if (event.target === tappedBefore) {
+                    // Zoom in to the tapped position
+                    cy.animate({
+                        zoom: cy.zoom() * 1.5,
+                        center: { x: event.position.x, y: event.position.y }
+                    }, {
+                        duration: 300
+                    });
+                }
+                tappedBefore = null;
+            } else {
+                tappedTimeout = setTimeout(function() { tappedBefore = null; }, 300);
+                tappedBefore = event.target;
+            }
+        });
+    });
+    </script>
 </body>
 </html>
 ''',
@@ -737,6 +956,25 @@ TEMPLATES = {
                 </div>
             </div>
 
+            <div class="card mb-4">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">Debt Knowledge Graph</h5>
+                </div>
+                <div class="card-body">
+                    <p class="mb-3">
+                        Interactive visualization of code dependencies and technical debt:
+                    </p>
+                    <div id="debt-graph" style="width: 100%; height: 500px; background-color: rgba(0, 0, 0, 0.6); border: 1px solid var(--primary-color); border-radius: 10px; overflow: hidden; box-shadow: var(--box-shadow);"></div>
+                    <div class="mt-3">
+                        <small class="text-muted">
+                            <strong>Node size</strong>: Complexity | 
+                            <strong>Node color</strong>: Test coverage (green = high, yellow = medium, red = low) | 
+                            <strong>Edge type</strong>: Solid green = function calls, dashed yellow = imports
+                        </small>
+                    </div>
+                </div>
+            </div>
+
             <div class="card">
                 <div class="card-header bg-primary text-white">
                     <h5 class="mb-0">Actions</h5>
@@ -764,6 +1002,9 @@ TEMPLATES = {
     <!-- Bootstrap JS and dependencies -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
     
+    <!-- Cytoscape.js -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/cytoscape/3.23.0/cytoscape.min.js"></script>
+    
     <!-- Page-specific JavaScript -->
     <script>
         document.addEventListener('DOMContentLoaded', function() {
@@ -771,6 +1012,25 @@ TEMPLATES = {
             const uploadContainer = document.querySelector('.upload-container');
             const progressContainer = document.querySelector('.progress-container');
             const resultsContainer = document.querySelector('.results-container');
+            
+            // Create tooltip element for the graph
+            const tooltip = document.createElement('div');
+            tooltip.className = 'cy-tooltip';
+            tooltip.style.cssText = `
+                position: absolute;
+                background-color: #000;
+                border: 1px solid #3DDC84;
+                color: #fff;
+                padding: 12px;
+                border-radius: 5px;
+                z-index: 1000;
+                font-size: 14px;
+                box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+                max-width: 300px;
+                pointer-events: none;
+                display: none;
+            `;
+            document.body.appendChild(tooltip);
             
             form.addEventListener('submit', function(e) {
                 e.preventDefault();
@@ -820,6 +1080,11 @@ TEMPLATES = {
                         debtByTypeContainer.innerHTML += debtTypeHTML;
                     }
                     
+                    // Initialize debt graph with Cytoscape.js
+                    if (data.graph_data && data.graph_data.nodes) {
+                        initializeDebtGraph(data.graph_data);
+                    }
+                    
                     // Show results
                     resultsContainer.style.display = 'block';
                 })
@@ -838,6 +1103,143 @@ TEMPLATES = {
                 return type.split('_')
                     .map(word => word.charAt(0).toUpperCase() + word.slice(1))
                     .join(' ');
+            }
+            
+            // Initialize the debt graph visualization
+            function initializeDebtGraph(graphData) {
+                const graphContainer = document.getElementById('debt-graph');
+                if (!graphContainer) return;
+                
+                // Initialize Cytoscape
+                const cy = cytoscape({
+                    container: graphContainer,
+                    elements: [...graphData.nodes, ...graphData.edges],
+                    style: [
+                        {
+                            selector: 'node',
+                            style: {
+                                'label': 'data(label)',
+                                'background-color': function(ele) {
+                                    // Map coverage to color (green to red)
+                                    const coverage = ele.data('coverage');
+                                    if (coverage >= 80) return '#3DDC84'; // High coverage (green)
+                                    if (coverage >= 50) return '#FFC107'; // Medium coverage (yellow)
+                                    return '#E84118';                     // Low coverage (red)
+                                },
+                                'width': function(ele) {
+                                    // Map complexity to size
+                                    const complexity = ele.data('complexity');
+                                    return 20 + Math.min(complexity * 2, 50); // Base size + complexity factor (capped)
+                                },
+                                'height': function(ele) {
+                                    // Map complexity to size
+                                    const complexity = ele.data('complexity');
+                                    return 20 + Math.min(complexity * 2, 50); // Base size + complexity factor (capped)
+                                },
+                                'font-size': '10px',
+                                'color': '#FFFFFF',
+                                'text-valign': 'center',
+                                'text-halign': 'center',
+                                'text-outline-width': 1,
+                                'text-outline-color': '#000000',
+                                'border-width': 2,
+                                'border-color': '#000000'
+                            }
+                        },
+                        {
+                            selector: 'node[type="class"]',
+                            style: {
+                                'shape': 'rectangle',
+                                'background-color': '#4B7BEC'
+                            }
+                        },
+                        {
+                            selector: 'node[type="method"]',
+                            style: {
+                                'shape': 'round-rectangle'
+                            }
+                        },
+                        {
+                            selector: 'edge',
+                            style: {
+                                'width': 2,
+                                'line-color': function(ele) {
+                                    // Different colors for different relation types
+                                    const relation = ele.data('relation');
+                                    if (relation === 'calls') return '#3DDC84';
+                                    if (relation === 'imports') return '#FFC107';
+                                    return '#AAAAAA';
+                                },
+                                'target-arrow-shape': 'triangle',
+                                'target-arrow-color': function(ele) {
+                                    // Match arrow color to line color
+                                    const relation = ele.data('relation');
+                                    if (relation === 'calls') return '#3DDC84';
+                                    if (relation === 'imports') return '#FFC107';
+                                    return '#AAAAAA';
+                                },
+                                'curve-style': 'bezier'
+                            }
+                        },
+                        {
+                            selector: 'edge[relation="calls"]',
+                            style: {
+                                'line-style': 'solid'
+                            }
+                        },
+                        {
+                            selector: 'edge[relation="imports"]',
+                            style: {
+                                'line-style': 'dashed'
+                            }
+                        }
+                    ],
+                    layout: {
+                        name: 'cose',
+                        nodeDimensionsIncludeLabels: true,
+                        animate: false,
+                        fit: true,
+                        padding: 50
+                    }
+                });
+                
+                // Add tap handler for nodes (show tooltip with details)
+                cy.on('tap', 'node', function(evt) {
+                    const node = evt.target;
+                    const data = node.data();
+                    
+                    // Format the tooltip content
+                    let content = `
+                        <strong>${data.label}</strong> (${data.type})<br>
+                        <hr style="margin: 5px 0; border-color: #3DDC84">
+                        <strong>Complexity:</strong> ${data.complexity}<br>
+                        <strong>Test Coverage:</strong> ${data.coverage}%<br>
+                        <strong>Code Churn:</strong> ${data.churn} commits<br>
+                    `;
+                    
+                    // Position and show the tooltip
+                    tooltip.innerHTML = content;
+                    tooltip.style.display = 'block';
+                    
+                    // Position near the node but not directly on top
+                    const position = node.renderedPosition();
+                    const nodeWidth = node.renderedWidth();
+                    
+                    tooltip.style.left = (position.x + nodeWidth/2 + 10) + 'px';
+                    tooltip.style.top = (position.y - 30) + 'px';
+                });
+                
+                // Hide tooltip when clicking elsewhere
+                cy.on('tap', function(evt) {
+                    if (evt.target === cy) {
+                        tooltip.style.display = 'none';
+                    }
+                });
+                
+                // Add responsive features
+                cy.userZoomingEnabled(true);
+                cy.userPanningEnabled(true);
+                cy.boxSelectionEnabled(true);
             }
         });
     </script>
@@ -1152,6 +1554,12 @@ def render_template(template_name, **context):
     # Replace CSS placeholder
     template = template.replace('{{css}}', CSS)
     
+    # Handle special case for graph_json (to make it safe for use in JavaScript)
+    if 'graph_json' in context:
+        # Safely encode JSON for embedding in JavaScript
+        graph_json_value = context['graph_json'].replace("'", "\\'").replace('\n', '\\n')
+        template = template.replace("'{{ graph_json|safe }}'", graph_json_value)
+    
     # Replace template variables
     for key, value in context.items():
         if isinstance(value, (int, float, str, bool)):
@@ -1204,7 +1612,25 @@ def render_template(template_name, **context):
 @app.route('/')
 def index():
     """Render the dashboard homepage."""
-    return render_template('index.html')
+    # For demo purposes, create a small mock graph
+    mock_graph = {
+        "nodes": [
+            {"data": {"id": "module1.func1", "label": "func1", "complexity": 12, "coverage": 65, "churn": 5, "type": "function"}},
+            {"data": {"id": "module1.func2", "label": "func2", "complexity": 8, "coverage": 75, "churn": 3, "type": "function"}},
+            {"data": {"id": "module2.func3", "label": "func3", "complexity": 15, "coverage": 45, "churn": 8, "type": "function"}},
+            {"data": {"id": "module2.Class1", "label": "Class1", "complexity": 5, "coverage": 90, "churn": 2, "type": "class"}},
+            {"data": {"id": "module2.Class1.method1", "label": "method1", "complexity": 3, "coverage": 95, "churn": 1, "type": "method"}}
+        ],
+        "edges": [
+            {"data": {"source": "module1.func1", "target": "module1.func2", "relation": "calls"}},
+            {"data": {"source": "module1.func2", "target": "module2.func3", "relation": "calls"}},
+            {"data": {"source": "module2.func3", "target": "module2.Class1.method1", "relation": "calls"}},
+            {"data": {"source": "module1.func1", "target": "module2.Class1", "relation": "imports"}}
+        ]
+    }
+    
+    graph_json = json.dumps(mock_graph)
+    return render_template('index.html', graph_json=graph_json)
 
 
 @app.route('/scan', methods=['GET', 'POST'])
@@ -1231,7 +1657,7 @@ def scan():
             zip_ref.extractall(extract_path)
         
         # Scan the repository
-        repo_score = scan_repository(extract_path)
+        repo_score, graph_json = scan_repository(extract_path)
         
         # Return results as JSON
         return jsonify({
@@ -1239,6 +1665,7 @@ def scan():
             'total_debt_items': repo_score.total_debt_items,
             'total_loc': repo_score.total_loc,
             'items_by_type': repo_score.items_by_type,
+            'graph_data': graph_json,
             # Add more data as needed
         })
     
@@ -1340,15 +1767,345 @@ def download_patch(file_path):
     )
 
 
+class CodeGraphBuilder:
+    """Builds a code dependency graph from Python files."""
+    
+    def __init__(self, repo_path):
+        self.repo_path = repo_path
+        self.graph = nx.DiGraph()
+        self.function_map = {}  # Maps function IDs to their full path
+        self.file_map = {}      # Maps file paths to their modules
+        
+    def build_graph(self):
+        """Builds the graph by analyzing Python files."""
+        python_files = self._find_python_files()
+        
+        # First pass: collect all function definitions
+        for file_path in python_files:
+            self._analyze_file_definitions(file_path)
+        
+        # Second pass: analyze function calls and imports
+        for file_path in python_files:
+            self._analyze_file_calls(file_path)
+            
+        # Add metrics to nodes
+        self._add_complexity_metrics()
+        self._add_churn_metrics()
+        self._add_coverage_metrics()
+        
+        return self.graph
+    
+    def _find_python_files(self):
+        """Find all Python files in the repository."""
+        python_files = []
+        exclude_patterns = ["**/.git/**", "**/venv/**", "**/__pycache__/**", "**/node_modules/**"]
+        
+        for root, dirs, files in os.walk(self.repo_path):
+            # Skip excluded directories
+            dirs[:] = [d for d in dirs if not any(Path(os.path.join(root, d)).match(pattern) for pattern in exclude_patterns)]
+            
+            for file in files:
+                file_path = os.path.join(root, file)
+                if file_path.endswith('.py') and not any(Path(file_path).match(pattern) for pattern in exclude_patterns):
+                    python_files.append(file_path)
+        
+        return python_files
+    
+    def _analyze_file_definitions(self, file_path):
+        """Analyze file to extract function definitions."""
+        try:
+            with open(file_path, 'r', encoding='utf-8') as f:
+                content = f.read()
+            
+            # Generate module name from file path
+            rel_path = os.path.relpath(file_path, self.repo_path)
+            module_name = rel_path.replace('/', '.').replace('\\', '.').replace('.py', '')
+            self.file_map[file_path] = module_name
+            
+            # Parse the file
+            tree = ast.parse(content, filename=file_path)
+            
+            # Extract function definitions
+            visitor = FunctionDefVisitor(file_path, module_name)
+            visitor.visit(tree)
+            
+            # Add functions to graph
+            for func_id, func_data in visitor.functions.items():
+                self.graph.add_node(func_id, **func_data)
+                self.function_map[func_id] = file_path
+                
+        except Exception as e:
+            print(f"Error analyzing definitions in {file_path}: {str(e)}")
+    
+    def _analyze_file_calls(self, file_path):
+        """Analyze file to extract function calls and imports."""
+        try:
+            with open(file_path, 'r', encoding='utf-8') as f:
+                content = f.read()
+            
+            module_name = self.file_map.get(file_path, '')
+            
+            # Parse the file
+            tree = ast.parse(content, filename=file_path)
+            
+            # Extract function calls
+            visitor = FunctionCallVisitor(file_path, module_name, self.function_map)
+            visitor.visit(tree)
+            
+            # Add edges to graph for function calls
+            for caller, callee in visitor.calls:
+                if caller in self.graph and callee in self.graph:
+                    self.graph.add_edge(caller, callee, relation="calls")
+            
+            # Add edges for imports
+            for importer, importee in visitor.imports:
+                if importer in self.graph and importee in self.graph:
+                    self.graph.add_edge(importer, importee, relation="imports")
+                
+        except Exception as e:
+            print(f"Error analyzing calls in {file_path}: {str(e)}")
+    
+    def _add_complexity_metrics(self):
+        """Add cyclomatic complexity metrics to graph nodes."""
+        # In a real implementation, use tools like radon or directly compute McCabe complexity
+        # For this example, we'll use random values
+        import random
+        for node in self.graph.nodes:
+            self.graph.nodes[node]['complexity'] = random.randint(1, 20)
+    
+    def _add_churn_metrics(self):
+        """Add code churn metrics based on git history."""
+        # In a real implementation, use GitPython or subprocess to run git log
+        # For this example, we'll use random values
+        import random
+        for node in self.graph.nodes:
+            self.graph.nodes[node]['churn'] = random.randint(0, 30)
+    
+    def _add_coverage_metrics(self):
+        """Add test coverage metrics to graph nodes."""
+        # In a real implementation, integrate with Coverage.py
+        # For this example, we'll use random values
+        import random
+        for node in self.graph.nodes:
+            self.graph.nodes[node]['coverage'] = random.randint(0, 100)
+    
+    def export_cytoscape_json(self):
+        """Export the graph in Cytoscape.js format."""
+        nodes = []
+        edges = []
+        
+        for node_id in self.graph.nodes:
+            node_data = self.graph.nodes[node_id]
+            nodes.append({
+                "data": {
+                    "id": node_id,
+                    "label": node_data.get("name", node_id.split(".")[-1]),
+                    "complexity": node_data.get("complexity", 0),
+                    "coverage": node_data.get("coverage", 0),
+                    "churn": node_data.get("churn", 0),
+                    "type": node_data.get("type", "function"),
+                    "file": node_data.get("file", "")
+                }
+            })
+        
+        for source, target, data in self.graph.edges(data=True):
+            edges.append({
+                "data": {
+                    "source": source,
+                    "target": target,
+                    "relation": data.get("relation", "unknown")
+                }
+            })
+        
+        return {
+            "nodes": nodes,
+            "edges": edges
+        }
+
+
+class FunctionDefVisitor(ast.NodeVisitor):
+    """AST visitor to extract function definitions."""
+    
+    def __init__(self, file_path, module_name):
+        self.file_path = file_path
+        self.module_name = module_name
+        self.current_class = None
+        self.functions = {}
+    
+    def visit_ClassDef(self, node):
+        """Visit class definition."""
+        old_class = self.current_class
+        self.current_class = node.name
+        
+        # Add class as a node
+        class_id = f"{self.module_name}.{node.name}"
+        self.functions[class_id] = {
+            "name": node.name,
+            "type": "class",
+            "file": self.file_path,
+            "line_start": node.lineno,
+            "line_end": node.end_lineno if hasattr(node, 'end_lineno') else node.lineno
+        }
+        
+        # Visit all the methods
+        self.generic_visit(node)
+        
+        self.current_class = old_class
+    
+    def visit_FunctionDef(self, node):
+        """Visit function definition."""
+        # Construct function ID
+        if self.current_class:
+            func_id = f"{self.module_name}.{self.current_class}.{node.name}"
+        else:
+            func_id = f"{self.module_name}.{node.name}"
+        
+        # Store function information
+        self.functions[func_id] = {
+            "name": node.name,
+            "type": "method" if self.current_class else "function",
+            "file": self.file_path,
+            "line_start": node.lineno,
+            "line_end": node.end_lineno if hasattr(node, 'end_lineno') else node.lineno
+        }
+        
+        # Continue visiting children
+        self.generic_visit(node)
+
+
+class FunctionCallVisitor(ast.NodeVisitor):
+    """AST visitor to extract function calls and imports."""
+    
+    def __init__(self, file_path, module_name, function_map):
+        self.file_path = file_path
+        self.module_name = module_name
+        self.function_map = function_map
+        self.current_class = None
+        self.current_function = None
+        self.calls = []
+        self.imports = []
+    
+    def visit_ClassDef(self, node):
+        """Visit class definition."""
+        old_class = self.current_class
+        self.current_class = node.name
+        
+        # Visit all the methods
+        self.generic_visit(node)
+        
+        self.current_class = old_class
+    
+    def visit_FunctionDef(self, node):
+        """Visit function definition."""
+        old_function = self.current_function
+        
+        # Construct function ID
+        if self.current_class:
+            self.current_function = f"{self.module_name}.{self.current_class}.{node.name}"
+        else:
+            self.current_function = f"{self.module_name}.{node.name}"
+        
+        # Visit the function body to find calls
+        self.generic_visit(node)
+        
+        self.current_function = old_function
+    
+    def visit_Call(self, node):
+        """Visit function call."""
+        if self.current_function:
+            callee = None
+            
+            # Handle simple name calls
+            if isinstance(node.func, ast.Name):
+                # Direct function call like "func()"
+                # In a real implementation, you'd need to resolve this with scope analysis
+                callee = f"{self.module_name}.{node.func.id}"
+            
+            # Handle attribute calls
+            elif isinstance(node.func, ast.Attribute):
+                # Method call like "obj.method()"
+                # This is a simplification - proper resolution would be more complex
+                if isinstance(node.func.value, ast.Name):
+                    # Try to resolve some common patterns
+                    if node.func.value.id == 'self' and self.current_class:
+                        callee = f"{self.module_name}.{self.current_class}.{node.func.attr}"
+                    else:
+                        # This is a best guess - would need proper resolution in a real impl
+                        callee = f"{node.func.value.id}.{node.func.attr}"
+            
+            # Add the call relation if we identified the callee
+            if callee and callee in self.function_map:
+                self.calls.append((self.current_function, callee))
+        
+        # Continue looking for nested calls
+        self.generic_visit(node)
+    
+    def visit_Import(self, node):
+        """Visit import statement."""
+        if self.current_function:
+            for name in node.names:
+                # Simplified import handling - would need proper resolution
+                if name.name in self.function_map:
+                    self.imports.append((self.current_function, name.name))
+        
+        self.generic_visit(node)
+    
+    def visit_ImportFrom(self, node):
+        """Visit from-import statement."""
+        if self.current_function:
+            module = node.module or ""
+            for name in node.names:
+                # Simplified - would need proper resolution
+                import_name = f"{module}.{name.name}"
+                if import_name in self.function_map:
+                    self.imports.append((self.current_function, import_name))
+        
+        self.generic_visit(node)
+
+
 def scan_repository(repo_path):
-    """Scan a repository for technical debt and return scores."""
-    # This is a mock implementation for the standalone app
-    # In a real implementation, this would analyze Python files
+    """Scan a repository for technical debt and return scores and graph."""
+    # Find Python files
+    python_files = []
+    exclude_patterns = ["**/.git/**", "**/venv/**", "**/__pycache__/**", "**/node_modules/**"]
     
-    # Create a mock repo score
-    repo_score = RepoScore(repo_path, {})
+    for root, dirs, files in os.walk(repo_path):
+        # Skip excluded directories
+        dirs[:] = [d for d in dirs if not any(Path(os.path.join(root, d)).match(pattern) for pattern in exclude_patterns)]
+        
+        for file in files:
+            file_path = os.path.join(root, file)
+            if file_path.endswith('.py') and not any(Path(file_path).match(pattern) for pattern in exclude_patterns):
+                python_files.append(file_path)
     
-    return repo_score
+    # Analyze files
+    file_scores = {}
+    for file_path in python_files:
+        try:
+            # Count lines of code
+            with open(file_path, 'r') as f:
+                loc = sum(1 for _ in f)
+            
+            # Analyze for debt
+            debt_items = analyze_file(file_path)
+            
+            # Score the file
+            file_score = scorer.score_file(file_path, debt_items, loc)
+            file_scores[file_path] = file_score
+        
+        except Exception as e:
+            # Log the error and continue
+            print(f"Error analyzing {file_path}: {str(e)}")
+    
+    # Score the repository
+    repo_score = scorer.score_repo(repo_path, file_scores)
+    
+    # Build code graph
+    graph_builder = CodeGraphBuilder(repo_path)
+    graph_builder.build_graph()
+    graph_json = graph_builder.export_cytoscape_json()
+    
+    return repo_score, graph_json
 
 
 # Initialize core components
