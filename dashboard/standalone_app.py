@@ -618,8 +618,71 @@ TEMPLATES = {
                     while edges show relationships. Node size indicates complexity, and color reflects test coverage.
                 </p>
                 <div id="debt-graph"></div>
-                <div class="mt-3">
+                <div class="mt-3 mb-4">
                     <small style="color: rgba(255, 255, 255, 0.8);">Click on nodes to see detailed debt metrics. Drag to pan, scroll to zoom.</small>
+                </div>
+                
+                <!-- Graph Legend -->
+                <div class="card bg-dark">
+                    <div class="card-header bg-primary text-white">
+                        <h6 class="mb-0">Legend</h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-4">
+                                <h6 class="text-white">Node Types</h6>
+                                <div class="d-flex align-items-center mb-2">
+                                    <div style="width: 16px; height: 16px; background-color: #F8F8F2; border-radius: 0; margin-right: 8px; transform: rotate(45deg)"></div>
+                                    <span style="color: #F8F8F2">Module</span>
+                                </div>
+                                <div class="d-flex align-items-center mb-2">
+                                    <div style="width: 16px; height: 16px; background-color: #4B7BEC; border-radius: 0; margin-right: 8px;"></div>
+                                    <span style="color: #8BE9FD">Class</span>
+                                </div>
+                                <div class="d-flex align-items-center mb-2">
+                                    <div style="width: 16px; height: 16px; background-color: #F8F8F2; border-radius: 4px; margin-right: 8px;"></div>
+                                    <span style="color: #50FA7B">Method</span>
+                                </div>
+                                <div class="d-flex align-items-center">
+                                    <div style="width: 16px; height: 16px; background-color: #F8F8F2; border-radius: 50%; margin-right: 8px;"></div>
+                                    <span style="color: #FF79C6">Function</span>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <h6 class="text-white">Node Colors</h6>
+                                <div class="d-flex align-items-center mb-2">
+                                    <div style="width: 16px; height: 16px; background-color: #3DDC84; border-radius: 50%; margin-right: 8px;"></div>
+                                    <span>High Coverage (80-100%)</span>
+                                </div>
+                                <div class="d-flex align-items-center mb-2">
+                                    <div style="width: 16px; height: 16px; background-color: #FFC107; border-radius: 50%; margin-right: 8px;"></div>
+                                    <span>Medium Coverage (50-79%)</span>
+                                </div>
+                                <div class="d-flex align-items-center mb-2">
+                                    <div style="width: 16px; height: 16px; background-color: #e84118; border-radius: 50%; margin-right: 8px;"></div>
+                                    <span>Low Coverage (0-49%)</span>
+                                </div>
+                                <div class="d-flex align-items-center">
+                                    <div style="width: 16px; height: 16px; border: 3px dashed #FF5555; border-radius: 50%; margin-right: 8px;"></div>
+                                    <span>Problem Area</span>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <h6 class="text-white">Relationships</h6>
+                                <div class="d-flex align-items-center mb-2">
+                                    <div style="width: 24px; height: 2px; background-color: #3DDC84; margin-right: 8px;"></div>
+                                    <span>Function Calls</span>
+                                </div>
+                                <div class="d-flex align-items-center mb-2" style="margin-top: 12px;">
+                                    <div style="width: 24px; height: 0px; border-top: 2px dashed #FFC107; margin-right: 8px;"></div>
+                                    <span>Imports</span>
+                                </div>
+                                <div style="margin-top: 15px;">
+                                    <small class="text-muted">Node size indicates complexity</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -686,7 +749,7 @@ TEMPLATES = {
                             const coverage = ele.data('coverage');
                             if (coverage >= 80) return '#3DDC84'; // High coverage (green)
                             if (coverage >= 50) return '#FFC107'; // Medium coverage (yellow)
-                            return '#E84118';                     // Low coverage (red)
+                            return '#e84118';                     // Low coverage (red)
                         },
                         'width': function(ele) {
                             // Map complexity to size
@@ -698,14 +761,22 @@ TEMPLATES = {
                             const complexity = ele.data('complexity');
                             return 20 + Math.min(complexity * 2, 50); // Base size + complexity factor (capped)
                         },
-                        'font-size': '10px',
-                        'color': '#FFFFFF',
+                        'font-size': '12px',
+                        'color': function(ele) {
+                            // Different text colors for different types
+                            const type = ele.data('type');
+                            if (type === 'function') return '#FF79C6'; // Pink for functions
+                            if (type === 'class') return '#8BE9FD';    // Cyan for classes
+                            if (type === 'method') return '#50FA7B';   // Green for methods
+                            return '#F8F8F2';                          // White for modules
+                        },
                         'text-valign': 'center',
                         'text-halign': 'center',
-                        'text-outline-width': 1,
+                        'text-outline-width': 2,
                         'text-outline-color': '#000000',
                         'border-width': 2,
-                        'border-color': '#000000'
+                        'border-color': '#000000',
+                        'text-margin-y': 5
                     }
                 },
                 {
@@ -719,6 +790,12 @@ TEMPLATES = {
                     selector: 'node[type="method"]',
                     style: {
                         'shape': 'round-rectangle'
+                    }
+                },
+                {
+                    selector: 'node[type="module"]',
+                    style: {
+                        'shape': 'hexagon'
                     }
                 },
                 {
@@ -740,7 +817,8 @@ TEMPLATES = {
                             if (relation === 'imports') return '#FFC107';
                             return '#AAAAAA';
                         },
-                        'curve-style': 'bezier'
+                        'curve-style': 'bezier',
+                        'opacity': 0.8
                     }
                 },
                 {
@@ -754,14 +832,27 @@ TEMPLATES = {
                     style: {
                         'line-style': 'dashed'
                     }
+                },
+                // Highlight nodes with high complexity and low coverage - potential problems
+                {
+                    selector: 'node[complexity >= 15][coverage <= 50]',
+                    style: {
+                        'border-width': 3,
+                        'border-color': '#FF5555',
+                        'border-style': 'dashed'
+                    }
                 }
             ],
             layout: {
                 name: 'cose',
-                nodeDimensionsIncludeLabels: true,
+                nodeDimensionsIncludeLabels: false,
                 animate: false,
                 fit: true,
-                padding: 50
+                padding: 50,
+                componentSpacing: 70,
+                nodeRepulsion: 6000,
+                edgeElasticity: 100,
+                gravity: 80
             }
         });
         
