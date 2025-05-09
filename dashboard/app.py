@@ -1,209 +1,172 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-
-"""
-Flask dashboard for DebtSweeper.
-
-Provides a web interface for visualizing debt scores and managing fixes.
-"""
-
-import os
-import json
-import tempfile
-import zipfile
-from pathlib import Path
-from typing import Dict, List, Any, Optional
-
-from flask import Flask, request, render_template, jsonify, send_file, redirect, url_for
-from werkzeug.utils import secure_filename
-
-import sys
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
-from debtsweeper.analyzer import analyze_file
-from debtsweeper.scorer import DebtScorer, FileScore, RepoScore
-from debtsweeper.orchestrator import LLMOrchestrator, RefactorSuggestion
-from debtsweeper.patches import PatchGenerator
-
+from flask import Flask, send_from_directory, render_template_string
 
 app = Flask(__name__)
-app.config['MAX_CONTENT_LENGTH'] = 100 * 1024 * 1024  # 100MB max upload size
-app.config['UPLOAD_FOLDER'] = tempfile.mkdtemp()
-
-# Initialize core components
-scorer = DebtScorer()
-
 
 @app.route('/')
 def index():
-    """Render the dashboard homepage."""
-    return render_template('index.html')
+    """Simple index page with link to graph visualization."""
+    html = """
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <meta charset="UTF-8">
+        <title>DebtSweeper Dashboard</title>
+        <style>
+            body {
+                font-family: Arial, sans-serif;
+                background: #000;
+                color: white;
+                margin: 0;
+                padding: 20px;
+                text-align: center;
+            }
+            h1 {
+                color: #3DDC84;
+            }
+            a {
+                display: inline-block;
+                margin-top: 20px;
+                padding: 10px 20px;
+                background: #000;
+                color: #3DDC84;
+                text-decoration: none;
+                border: 2px solid #3DDC84;
+                border-radius: 4px;
+            }
+            a:hover {
+                background: #3DDC84;
+                color: #000;
+            }
+        </style>
+    </head>
+    <body>
+        <h1>DebtSweeper Dashboard</h1>
+        <p>View the interactive visualization of your code dependencies and technical debt.</p>
+        <a href="/graph">View Debt Knowledge Graph</a>
+    </body>
+    </html>
+    """
+    return render_template_string(html)
 
-
-@app.route('/scan', methods=['GET', 'POST'])
-def scan():
-    """Handle repository scanning and display results."""
-    if request.method == 'POST':
-        # Check if a zip file was uploaded
-        if 'repo_zip' not in request.files:
-            return jsonify({'error': 'No file uploaded'}), 400
+@app.route('/graph')
+def graph():
+    """Render graph visualization."""
+    html = """
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <meta charset="UTF-8">
+        <title>DebtSweeper Graph</title>
+        <style>
+            body {
+                font-family: Arial, sans-serif;
+                background: #000;
+                color: white;
+                margin: 0;
+                padding: 20px;
+                text-align: center;
+            }
+            h1 {
+                color: #3DDC84;
+            }
+            .graph-container {
+                width: 800px;
+                height: 500px;
+                margin: 20px auto;
+                border: 2px solid #3DDC84;
+                background: #111;
+                position: relative;
+            }
+            .node {
+                position: absolute;
+                border-radius: 50%;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-weight: bold;
+                color: white;
+                box-shadow: 0 0 10px rgba(0,0,0,0.5);
+            }
+            .line {
+                position: absolute;
+                height: 2px;
+                background: #aaa;
+                transform-origin: 0 0;
+            }
+            .legend {
+                margin-top: 20px;
+                display: inline-block;
+                background: #222;
+                padding: 15px;
+                border-radius: 5px;
+                text-align: left;
+            }
+            .legend-item {
+                display: flex;
+                align-items: center;
+                margin-bottom: 10px;
+            }
+            .legend-color {
+                width: 20px;
+                height: 20px;
+                border-radius: 50%;
+                margin-right: 10px;
+            }
+            a {
+                color: #3DDC84;
+                text-decoration: none;
+                margin-top: 20px;
+                display: inline-block;
+            }
+        </style>
+    </head>
+    <body>
+        <h1>DebtSweeper Knowledge Graph</h1>
+        <p>Static visualization of code dependencies and technical debt.</p>
         
-        repo_zip = request.files['repo_zip']
-        if repo_zip.filename == '':
-            return jsonify({'error': 'No file selected'}), 400
-        
-        # Save the zip file
-        zip_path = os.path.join(app.config['UPLOAD_FOLDER'], secure_filename(repo_zip.filename))
-        repo_zip.save(zip_path)
-        
-        # Extract the zip file
-        extract_path = os.path.join(app.config['UPLOAD_FOLDER'], 'repo')
-        os.makedirs(extract_path, exist_ok=True)
-        
-        with zipfile.ZipFile(zip_path, 'r') as zip_ref:
-            zip_ref.extractall(extract_path)
-        
-        # Scan the repository
-        repo_score = scan_repository(extract_path)
-        
-        # Return results as JSON
-        return jsonify({
-            'repo_score': repo_score.debt_score,
-            'total_debt_items': repo_score.total_debt_items,
-            'total_loc': repo_score.total_loc,
-            'items_by_type': repo_score.items_by_type,
-            # Add more data as needed
-        })
-    
-    # GET request - show upload form
-    return render_template('scan.html')
-
-
-@app.route('/file/<path:file_path>')
-def view_file(file_path):
-    """View details for a specific file."""
-    # Convert path to absolute path within extracted repo
-    full_path = os.path.join(app.config['UPLOAD_FOLDER'], 'repo', file_path)
-    
-    if not os.path.isfile(full_path):
-        return jsonify({'error': 'File not found'}), 404
-    
-    # Analyze the file
-    debt_items = analyze_file(full_path)
-    
-    # Count lines of code
-    with open(full_path, 'r') as f:
-        loc = sum(1 for _ in f)
-    
-    # Score the file
-    file_score = scorer.score_file(file_path, debt_items, loc)
-    
-    # Render template with file details
-    return render_template(
-        'file.html',
-        file_path=file_path,
-        file_score=file_score,
-        debt_items=debt_items,
-        loc=loc
-    )
-
-
-@app.route('/suggest/<path:file_path>', methods=['POST'])
-def suggest_fixes(file_path):
-    """Generate fix suggestions for a file."""
-    # Convert path to absolute path within extracted repo
-    full_path = os.path.join(app.config['UPLOAD_FOLDER'], 'repo', file_path)
-    
-    if not os.path.isfile(full_path):
-        return jsonify({'error': 'File not found'}), 404
-    
-    # Get debt item IDs to fix from the form
-    debt_item_ids = request.form.getlist('debt_item_ids', type=int)
-    
-    if not debt_item_ids:
-        return jsonify({'error': 'No debt items selected'}), 400
-    
-    # TODO: Implement actual fix generation
-    # This is a placeholder
-    
-    return jsonify({
-        'message': f'Generated fixes for {len(debt_item_ids)} debt items in {file_path}',
-        'patch_url': url_for('download_patch', file_path=file_path)
-    })
-
-
-@app.route('/patch/<path:file_path>')
-def download_patch(file_path):
-    """Download a patch file for fixes."""
-    # Convert path to absolute path within extracted repo
-    full_path = os.path.join(app.config['UPLOAD_FOLDER'], 'repo', file_path)
-    
-    if not os.path.isfile(full_path):
-        return jsonify({'error': 'File not found'}), 404
-    
-    # TODO: Implement actual patch generation and download
-    # This is a placeholder
-    
-    patch_content = f"""diff --git a/{file_path} b/{file_path}
---- a/{file_path}
-+++ b/{file_path}
-@@ -1,5 +1,5 @@
--# Example patch
-+# Example patched content
- """
-    
-    # Create a temporary patch file
-    with tempfile.NamedTemporaryFile(suffix='.patch', delete=False) as temp:
-        temp.write(patch_content.encode('utf-8'))
-        temp_path = temp.name
-    
-    return send_file(
-        temp_path,
-        as_attachment=True,
-        download_name=f"{os.path.basename(file_path)}.patch",
-        mimetype='text/plain'
-    )
-
-
-def scan_repository(repo_path):
-    """Scan a repository for technical debt and return scores."""
-    # Find Python files
-    python_files = []
-    exclude_patterns = ["**/.git/**", "**/venv/**", "**/__pycache__/**", "**/node_modules/**"]
-    
-    for root, dirs, files in os.walk(repo_path):
-        # Skip excluded directories
-        dirs[:] = [d for d in dirs if not any(Path(os.path.join(root, d)).match(pattern) for pattern in exclude_patterns)]
-        
-        for file in files:
-            file_path = os.path.join(root, file)
-            if file_path.endswith('.py') and not any(Path(file_path).match(pattern) for pattern in exclude_patterns):
-                python_files.append(file_path)
-    
-    # Analyze files
-    file_scores = {}
-    for file_path in python_files:
-        try:
-            # Count lines of code
-            with open(file_path, 'r') as f:
-                loc = sum(1 for _ in f)
+        <div class="graph-container">
+            <!-- Hard-coded nodes -->
+            <div class="node" style="width: 80px; height: 80px; background: #3DDC84; left: 100px; top: 100px;">Module A</div>
+            <div class="node" style="width: 70px; height: 70px; background: #FFC107; left: 300px; top: 80px;">Class B</div>
+            <div class="node" style="width: 60px; height: 60px; background: #e84118; left: 450px; top: 150px;">Func C</div>
+            <div class="node" style="width: 65px; height: 65px; background: #3DDC84; left: 280px; top: 250px;">Method D</div>
+            <div class="node" style="width: 75px; height: 75px; background: #FFC107; left: 120px; top: 280px;">Module E</div>
             
-            # Analyze for debt
-            debt_items = analyze_file(file_path)
-            
-            # Score the file
-            file_score = scorer.score_file(file_path, debt_items, loc)
-            file_scores[file_path] = file_score
+            <!-- Hard-coded edges (positioned and rotated with inline styles) -->
+            <div class="line" style="width: 205px; left: 140px; top: 100px; transform: rotate(0deg);"></div>
+            <div class="line" style="width: 180px; left: 135px; top: 135px; transform: rotate(35deg);"></div>
+            <div class="line" style="width: 190px; left: 335px; top: 115px; transform: rotate(45deg);"></div>
+            <div class="line" style="width: 170px; left: 310px; top: 250px; transform: rotate(200deg);"></div>
+            <div class="line" style="width: 220px; left: 175px; top: 280px; transform: rotate(315deg);"></div>
+        </div>
         
-        except Exception as e:
-            # Log the error and continue
-            print(f"Error analyzing {file_path}: {str(e)}")
-    
-    # Score the repository
-    repo_score = scorer.score_repo(repo_path, file_scores)
-    
-    return repo_score
+        <div class="legend">
+            <div class="legend-item">
+                <div class="legend-color" style="background: #3DDC84;"></div>
+                <span>High test coverage (>80%)</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color" style="background: #FFC107;"></div>
+                <span>Medium test coverage (50-80%)</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color" style="background: #e84118;"></div>
+                <span>Low test coverage (<50%)</span>
+            </div>
+            <div class="legend-item">
+                <span>Node size represents code complexity</span>
+            </div>
+        </div>
+        
+        <p><a href="/">Back to Dashboard</a></p>
+    </body>
+    </html>
+    """
+    return render_template_string(html)
 
+@app.route('/static/<path:path>')
+def serve_static(path):
+    return send_from_directory('static', path)
 
 if __name__ == '__main__':
-    app.run(debug=True, host='0.0.0.0', port=5050)
+    app.run(host='0.0.0.0', port=5050, debug=True)
