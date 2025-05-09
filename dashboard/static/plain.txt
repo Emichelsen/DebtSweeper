@@ -1,0 +1,1 @@
+This is a plain text file. If you can see this, static files are being served correctly.

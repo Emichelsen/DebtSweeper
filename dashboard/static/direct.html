@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Direct Graph</title>
+    <style>
+        body {
+            background: #000;
+            color: white;
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            text-align: center;
+        }
+        h1 {
+            color: #3DDC84;
+        }
+        .graph {
+            width: 600px;
+            height: 400px;
+            margin: 20px auto;
+            background: #111;
+            border: 2px solid #3DDC84;
+            position: relative;
+        }
+        .node {
+            position: absolute;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            color: white;
+            box-shadow: 0 0 10px rgba(0,0,0,0.5);
+        }
+        .line {
+            position: absolute;
+            height: 2px;
+            background: #aaa;
+            transform-origin: 0 0;
+        }
+    </style>
+</head>
+<body>
+    <h1>DebtSweeper Knowledge Graph</h1>
+    <p>Static visualization of code dependencies.</p>
+    
+    <div class="graph">
+        <!-- Hard-coded nodes -->
+        <div class="node" style="width: 80px; height: 80px; background: #3DDC84; left: 100px; top: 100px;">Module A</div>
+        <div class="node" style="width: 70px; height: 70px; background: #FFC107; left: 300px; top: 80px;">Class B</div>
+        <div class="node" style="width: 60px; height: 60px; background: #e84118; left: 450px; top: 150px;">Func C</div>
+        <div class="node" style="width: 65px; height: 65px; background: #3DDC84; left: 280px; top: 250px;">Method D</div>
+        <div class="node" style="width: 75px; height: 75px; background: #FFC107; left: 120px; top: 280px;">Module E</div>
+        
+        <!-- Hard-coded edges (positioned and rotated with inline styles) -->
+        <div class="line" style="width: 205px; left: 140px; top: 100px; transform: rotate(0deg);"></div>
+        <div class="line" style="width: 180px; left: 135px; top: 135px; transform: rotate(35deg);"></div>
+        <div class="line" style="width: 190px; left: 335px; top: 115px; transform: rotate(45deg);"></div>
+        <div class="line" style="width: 170px; left: 310px; top: 250px; transform: rotate(200deg);"></div>
+        <div class="line" style="width: 220px; left: 175px; top: 280px; transform: rotate(315deg);"></div>
+    </div>
+    
+    <div style="margin-top: 20px; background: #222; padding: 10px; border-radius: 5px; display: inline-block;">
+        <div style="display: flex; align-items: center; margin-bottom: 10px;">
+            <div style="width: 20px; height: 20px; background: #3DDC84; border-radius: 50%; margin-right: 10px;"></div>
+            <span>High test coverage (>80%)</span>
+        </div>
+        <div style="display: flex; align-items: center; margin-bottom: 10px;">
+            <div style="width: 20px; height: 20px; background: #FFC107; border-radius: 50%; margin-right: 10px;"></div>
+            <span>Medium test coverage (50-80%)</span>
+        </div>
+        <div style="display: flex; align-items: center;">
+            <div style="width: 20px; height: 20px; background: #e84118; border-radius: 50%; margin-right: 10px;"></div>
+            <span>Low test coverage (<50%)</span>
+        </div>
+    </div>
+    
+    <p><a href="/" style="color: #3DDC84;">Back to Dashboard</a></p>
+</body>
+</html>

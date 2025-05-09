@@ -1,0 +1,15 @@
+Options +Indexes
+DirectoryIndex index.html index.php
+
+# Enable static file access
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    
+    # Allow direct access to static files
+    RewriteCond %{REQUEST_URI} ^/static/
+    RewriteRule . - [L]
+    
+    # For all other requests, pass to passenger_wsgi.py
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteRule ^(.*)$ passenger_wsgi.py/$1 [QSA,L]
+</IfModule>

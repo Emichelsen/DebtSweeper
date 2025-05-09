@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>DebtSweeper Graph</title>
+    <script src="https://unpkg.com/cytoscape@3.23.0/dist/cytoscape.min.js"></script>
+    <style>
+        body { 
+            margin: 0; 
+            padding: 0; 
+            font-family: Arial, sans-serif; 
+            background: #111; 
+            color: white; 
+        }
+        h1 { 
+            text-align: center; 
+            color: #3DDC84; 
+            padding: 20px; 
+            margin-bottom: 0; 
+        }
+        #cy { 
+            width: 100%; 
+            height: 80vh; 
+            border: 2px solid #3DDC84; 
+        }
+        .btn {
+            display: block;
+            margin: 20px auto;
+            padding: 10px 20px;
+            background: #000;
+            color: #3DDC84;
+            border: 2px solid #3DDC84;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        .btn:hover {
+            background: #3DDC84;
+            color: #000;
+        }
+    </style>
+</head>
+<body>
+    <h1>DebtSweeper Knowledge Graph</h1>
+    <div id="cy"></div>
+    <button class="btn" onclick="resetView()">Reset View</button>
+
+    <script>
+    // Wait for DOM to load
+    document.addEventListener('DOMContentLoaded', function() {
+        // Simple nodes and edges
+        var elements = [
+            // Nodes
+            { data: { id: 'n1', label: 'Module A', color: '#3DDC84', size: 40 } },
+            { data: { id: 'n2', label: 'Class B', color: '#FFC107', size: 35 } },
+            { data: { id: 'n3', label: 'Function C', color: '#e84118', size: 30 } },
+            { data: { id: 'n4', label: 'Method D', color: '#3DDC84', size: 25 } },
+            { data: { id: 'n5', label: 'Module E', color: '#FFC107', size: 40 } },
+            
+            // Edges
+            { data: { source: 'n1', target: 'n2' } },
+            { data: { source: 'n1', target: 'n3' } },
+            { data: { source: 'n2', target: 'n4' } },
+            { data: { source: 'n4', target: 'n5' } },
+            { data: { source: 'n3', target: 'n5' } }
+        ];
+        
+        // Initialize Cytoscape
+        var cy = cytoscape({
+            container: document.getElementById('cy'),
+            elements: elements,
+            style: [
+                {
+                    selector: 'node',
+                    style: {
+                        'label': 'data(label)',
+                        'background-color': 'data(color)',
+                        'width': 'data(size)',
+                        'height': 'data(size)',
+                        'color': 'white',
+                        'text-outline-width': 2,
+                        'text-outline-color': '#000',
+                        'font-size': '16px'
+                    }
+                },
+                {
+                    selector: 'edge',
+                    style: {
+                        'width': 3,
+                        'line-color': '#ccc',
+                        'target-arrow-shape': 'triangle',
+                        'target-arrow-color': '#ccc',
+                        'curve-style': 'bezier'
+                    }
+                }
+            ],
+            layout: {
+                name: 'circle',
+                padding: 50
+            }
+        });
+        
+        // Store the cy instance globally
+        window.cy = cy;
+    });
+    
+    // Reset view function
+    function resetView() {
+        if (window.cy) {
+            window.cy.fit();
+        }
+    }
+    </script>
+</body>
+</html>

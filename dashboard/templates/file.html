@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ file_path }} - DebtSweeper</title>
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <!-- Prism.js for syntax highlighting -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/themes/prism-tomorrow.min.css" rel="stylesheet">
+    <!-- Custom CSS -->
+    <link href="{{ url_for('static', filename='style.css') }}" rel="stylesheet">
+    <style>
+        .debt-item {
+            cursor: pointer;
+            border-left: 4px solid var(--danger-color);
+            transition: background-color 0.2s;
+        }
+        .debt-item:hover {
+            background-color: rgba(232, 65, 24, 0.1);
+        }
+        pre {
+            max-height: 400px;
+            overflow-y: auto;
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark">
+        <div class="container">
+            <a class="navbar-brand" href="/"><span>&lt;</span>DebtSweeper<span>&gt;</span></a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav">
+                    <li class="nav-item">
+                        <a class="nav-link" href="/">Home</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/scan">Scan</a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container py-5">
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="/scan">Scan Results</a></li>
+                <li class="breadcrumb-item active">{{ file_path }}</li>
+            </ol>
+        </nav>
+
+        <div class="row mb-4">
+            <div class="col-md-8">
+                <h1>{{ file_path.split('/')[-1] }}</h1>
+                <p class="text-muted">{{ file_path }}</p>
+            </div>
+            <div class="col-md-4 text-end">
+                <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#suggestFixesModal">Suggest Fixes</button>
+            </div>
+        </div>
+
+        <div class="row mb-4">
+            <div class="col-md-4 mb-3">
+                <div class="card h-100">
+                    <div class="card-body text-center">
+                        <h6 class="card-subtitle mb-2 text-muted">Debt Score</h6>
+                        <h2 class="display-4 text-primary">{{ "%.2f"|format(file_score.debt_score) }}</h2>
+                        <p class="card-text"><small class="text-muted">Lower is better (0-1 scale)</small></p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4 mb-3">
+                <div class="card h-100">
+                    <div class="card-body text-center">
+                        <h6 class="card-subtitle mb-2 text-muted">Debt Items</h6>
+                        <h2 class="display-4 text-primary">{{ debt_items|length }}</h2>
+                        <p class="card-text"><small class="text-muted">Issues detected</small></p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4 mb-3">
+                <div class="card h-100">
+                    <div class="card-body text-center">
+                        <h6 class="card-subtitle mb-2 text-muted">Lines of Code</h6>
+                        <h2 class="display-4 text-primary">{{ loc }}</h2>
+                        <p class="card-text"><small class="text-muted">Python code</small></p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        {% if debt_items %}
+        <div class="card mb-4">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0">Debt Items</h5>
+            </div>
+            <div class="card-body">
+                <div class="list-group">
+                    {% for item in debt_items %}
+                    <div class="list-group-item debt-item" data-debt-id="{{ loop.index0 }}">
+                        <div class="d-flex w-100 justify-content-between">
+                            <h5 class="mb-1">{{ item.debt_type.replace('_', ' ').title() }}</h5>
+                            <span class="badge bg-danger">Severity: {{ "%.2f"|format(item.severity) }}</span>
+                        </div>
+                        <p class="mb-1">{{ item.message }}</p>
+                        <small>Lines {{ item.line_start }}-{{ item.line_end }}</small>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+        {% else %}
+        <div class="alert alert-success">
+            <h4 class="alert-heading">No Debt Found!</h4>
+            <p>This file doesn't have any detected technical debt. Great job!</p>
+        </div>
+        {% endif %}
+
+        <div class="card">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0">File Content</h5>
+            </div>
+            <div class="card-body">
+                <pre><code class="language-python">{{ file_content|default('File content not available') }}</code></pre>
+            </div>
+        </div>
+    </div>
+
+    <!-- Suggest Fixes Modal -->
+    <div class="modal fade" id="suggestFixesModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Suggest Fixes</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="suggest-fixes-form" action="/suggest/{{ file_path }}" method="post">
+                        <p>Select the debt items you want to fix:</p>
+                        
+                        <div class="list-group mb-3">
+                            {% for item in debt_items %}
+                            <label class="list-group-item">
+                                <input class="form-check-input me-1" type="checkbox" name="debt_item_ids" value="{{ loop.index0 }}">
+                                <div>
+                                    <strong>{{ item.debt_type.replace('_', ' ').title() }}</strong>
+                                    <p class="mb-1">{{ item.message }}</p>
+                                    <small>Lines {{ item.line_start }}-{{ item.line_end }}</small>
+                                </div>
+                            </label>
+                            {% endfor %}
+                        </div>
+                        
+                        <div class="alert alert-info">
+                            <p class="mb-0">DebtSweeper will analyze the selected items and generate refactoring suggestions.</p>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" form="suggest-fixes-form" class="btn btn-primary">Generate Suggestions</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <footer class="py-4 mt-5">
+        <div class="container text-center">
+            <p>DebtSweeper &copy; 2025 - <span class="creator">A product by Eduardo Michelsen</span></p>
+        </div>
+    </footer>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- Prism.js for syntax highlighting -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/components/prism-core.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/plugins/autoloader/prism-autoloader.min.js"></script>
+    
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Handle form submission via AJAX
+            const suggestForm = document.getElementById('suggest-fixes-form');
+            
+            suggestForm.addEventListener('submit', function(e) {
+                e.preventDefault();
+                
+                // Collect form data
+                const formData = new FormData(suggestForm);
+                
+                // Submit via fetch
+                fetch(suggestForm.action, {
+                    method: 'POST',
+                    body: formData
+                })
+                .then(response => response.json())
+                .then(data => {
+                    // Close modal
+                    const modal = bootstrap.Modal.getInstance(document.getElementById('suggestFixesModal'));
+                    modal.hide();
+                    
+                    // Show success message
+                    alert(data.message);
+                    
+                    // Optional: Redirect to patch download
+                    if (data.patch_url) {
+                        window.location.href = data.patch_url;
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('An error occurred while generating fix suggestions.');
+                });
+            });
+            
+            // Highlight debt items in code
+            const debtItems = document.querySelectorAll('.debt-item');
+            
+            debtItems.forEach(item => {
+                item.addEventListener('click', function() {
+                    const debtId = this.dataset.debtId;
+                    // TODO: Implement code highlighting based on line numbers
+                    console.log('Clicked on debt item', debtId);
+                });
+            });
+        });
+    </script>
+</body>
+</html>

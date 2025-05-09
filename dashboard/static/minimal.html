@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Minimal Graph</title>
+    <style>
+        body { 
+            font-family: Arial; 
+            margin: 0; 
+            padding: 20px; 
+            text-align: center; 
+        }
+        svg { 
+            border: 1px solid #ccc; 
+            margin: 20px auto;
+            background: #f5f5f5;
+        }
+    </style>
+</head>
+<body>
+    <h1>Minimal Graph Example</h1>
+    <p>This page creates a graph using only SVG - no external libraries required.</p>
+    
+    <svg width="400" height="300" viewBox="0 0 400 300">
+        <!-- Edges (lines) -->
+        <line x1="100" y1="100" x2="300" y2="100" stroke="black" stroke-width="2"/>
+        <line x1="100" y1="100" x2="200" y2="200" stroke="black" stroke-width="2"/>
+        <line x1="300" y1="100" x2="200" y2="200" stroke="black" stroke-width="2"/>
+        
+        <!-- Nodes (circles) -->
+        <circle cx="100" cy="100" r="30" fill="#3DDC84"/>
+        <circle cx="300" cy="100" r="30" fill="#FFC107"/>
+        <circle cx="200" cy="200" r="30" fill="#e84118"/>
+        
+        <!-- Labels -->
+        <text x="100" y="105" text-anchor="middle" fill="white">Node A</text>
+        <text x="300" y="105" text-anchor="middle" fill="white">Node B</text>
+        <text x="200" y="205" text-anchor="middle" fill="white">Node C</text>
+    </svg>
+    
+    <p>If you can see the colored circles with labels connected by lines above, the display is working.</p>
+</body>
+</html>

@@ -726,8 +726,11 @@ TEMPLATES = {
     <!-- Debt Graph Visualization -->
     <script>
     document.addEventListener('DOMContentLoaded', function() {
+        console.log('Initializing graph visualization');
+        
         // Parse the graph data from the template
         const graphData = JSON.parse('{{ graph_json|safe }}');
+        console.log('Graph data loaded:', graphData);
         
         // Create a tooltip element
         const tooltip = document.createElement('div');
@@ -735,10 +738,16 @@ TEMPLATES = {
         tooltip.style.display = 'none';
         document.body.appendChild(tooltip);
         
-        // Initialize Cytoscape
-        const cy = cytoscape({
-            container: document.getElementById('debt-graph'),
-            elements: [...graphData.nodes, ...graphData.edges],
+        // Wait for DOM to be fully ready
+        setTimeout(() => {
+            // Get the container and make sure it's properly sized
+            const container = document.getElementById('debt-graph');
+            console.log('Container:', container);
+            
+            // Initialize Cytoscape with delay to ensure container is ready
+            const cy = cytoscape({
+                container: container,
+                elements: graphData.nodes.concat(graphData.edges),
             style: [
                 {
                     selector: 'node',
