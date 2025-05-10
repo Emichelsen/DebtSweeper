@@ -364,7 +364,61 @@ def sample_function():
                 })
                 .catch(error => {
                     console.error('Error:', error);
-                    alert('An error occurred while generating fixes. Please try again.');
+
+                    // Create a debug modal with error information
+                    document.body.insertAdjacentHTML('beforeend', `
+                        <div class="modal fade" id="error-debug-modal" tabindex="-1" aria-hidden="true">
+                            <div class="modal-dialog modal-lg">
+                                <div class="modal-content">
+                                    <div class="modal-header bg-danger text-white">
+                                        <h5 class="modal-title">Error Details</h5>
+                                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                    </div>
+                                    <div class="modal-body">
+                                        <p>Error message: ${error.message}</p>
+                                        <p>Error type: ${error.name}</p>
+                                        <p>Error stack:</p>
+                                        <pre class="bg-dark text-light p-3">${error.stack || 'No stack trace available'}</pre>
+
+                                        <h6 class="mt-3">Debugging Information:</h6>
+                                        <ul>
+                                            <li>API Key Status: <span id="api-key-status">Checking...</span></li>
+                                            <li>Browser: ${navigator.userAgent}</li>
+                                            <li>Time: ${new Date().toISOString()}</li>
+                                        </ul>
+                                    </div>
+                                    <div class="modal-footer">
+                                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    `);
+
+                    // Show the debug modal
+                    const errorModal = new bootstrap.Modal(document.getElementById('error-debug-modal'));
+                    errorModal.show();
+
+                    // Check API key status
+                    fetch('/api-key-status')
+                        .then(response => response.json())
+                        .then(data => {
+                            const statusElement = document.getElementById('api-key-status');
+                            if (data.has_key) {
+                                statusElement.textContent = `API key present (${data.key_prefix}, length: ${data.key_length})`;
+                                statusElement.style.color = 'green';
+                            } else {
+                                statusElement.textContent = 'No API key found in environment!';
+                                statusElement.style.color = 'red';
+                            }
+                        })
+                        .catch(err => {
+                            document.getElementById('api-key-status').textContent =
+                                'Error checking API key: ' + err.message;
+                        });
+
+                    // Also show simple alert for users who may dismiss the modal
+                    alert('An error occurred while generating fixes. Please see the error details for more information.');
 
                     // Reset button
                     generateFixesBtn.textContent = originalBtnText;

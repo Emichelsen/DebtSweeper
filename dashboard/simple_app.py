@@ -115,44 +115,91 @@ def generate_fixes():
     Generate fixes for technical debt items using GPT-4o-mini.
     Expects a JSON payload with code snippets that need refactoring.
     """
-    data = request.json
-    snippets = data.get('snippets', [])
-    fixes = []
-    
-    system_prompt = """
-    You are a senior Python developer specializing in code refactoring to eliminate technical debt.
-    Your task is to refactor the provided code snippet to:
-    1. Reduce complexity by breaking down long functions
-    2. Improve readability with better variable names and comments
-    3. Eliminate code duplication through proper abstraction
-    4. Apply appropriate design patterns
-    5. Ensure PEP 8 compliance
-    
-    Provide ONLY the refactored code as your response, with no explanations or annotations.
-    The refactored code should maintain the same functionality but with better structure and readability.
-    """
-    
-    # Process each snippet
-    for snippet in snippets:
-        try:
-            refactored_code = refactor_snippet(snippet['code'], system_prompt)
-            fixes.append({
-                'id': snippet['id'],
-                'original': snippet['code'],
-                'refactored': refactored_code,
-                'status': 'success'
-            })
-        except Exception as e:
-            # If refactoring fails, include the error in the response
-            fixes.append({
-                'id': snippet['id'],
-                'original': snippet['code'],
-                'status': 'error',
-                'error': str(e)
-            })
-    
+    # Enable detailed debugging
+    import traceback
+    import sys
+
+    try:
+        data = request.json
+        snippets = data.get('snippets', [])
+        fixes = []
+
+        # Print diagnostic info
+        print(f"Processing {len(snippets)} snippets")
+        print(f"OpenAI API key set: {bool(os.getenv('OPENAI_API_KEY'))}")
+        print(f"OpenAI library available: {has_openai}")
+
+        system_prompt = """
+        You are a senior Python developer specializing in code refactoring to eliminate technical debt.
+        Your task is to refactor the provided code snippet to:
+        1. Reduce complexity by breaking down long functions
+        2. Improve readability with better variable names and comments
+        3. Eliminate code duplication through proper abstraction
+        4. Apply appropriate design patterns
+        5. Ensure PEP 8 compliance
+
+        Provide ONLY the refactored code as your response, with no explanations or annotations.
+        The refactored code should maintain the same functionality but with better structure and readability.
+        """
+
+        # Process each snippet
+        for i, snippet in enumerate(snippets):
+            try:
+                print(f"Processing snippet {i+1}/{len(snippets)}: {snippet['id']}")
+                refactored_code = refactor_snippet(snippet['code'], system_prompt)
+                fixes.append({
+                    'id': snippet['id'],
+                    'original': snippet['code'],
+                    'refactored': refactored_code,
+                    'status': 'success'
+                })
+                print(f"Successfully processed snippet {snippet['id']}")
+            except Exception as e:
+                # Capture full stack trace
+                exc_type, exc_value, exc_traceback = sys.exc_info()
+                trace_details = traceback.format_exception(exc_type, exc_value, exc_traceback)
+                error_trace = ''.join(trace_details)
+
+                print(f"Error processing snippet {snippet['id']}:")
+                print(error_trace)
+
+                # If refactoring fails, include the error in the response
+                fixes.append({
+                    'id': snippet['id'],
+                    'original': snippet['code'],
+                    'status': 'error',
+                    'error': f"{str(e)}\n\nStack trace:\n{error_trace}"
+                })
+
+        print(f"Completed processing all snippets. Success: {sum(1 for f in fixes if f['status'] == 'success')}, Errors: {sum(1 for f in fixes if f['status'] == 'error')}")
+        return jsonify({
+            'fixes': fixes
+        })
+    except Exception as e:
+        # Capture full request-level exception details
+        exc_type, exc_value, exc_traceback = sys.exc_info()
+        trace_details = traceback.format_exception(exc_type, exc_value, exc_traceback)
+        error_trace = ''.join(trace_details)
+
+        print("Fatal error in generate_fixes:")
+        print(error_trace)
+
+        # Return a detailed error response
+        return jsonify({
+            'status': 'error',
+            'message': str(e),
+            'trace': error_trace
+        }), 500
+
+@app.route('/api-key-status')
+def api_key_status():
+    """Check if the API key is set."""
+    api_key = os.getenv("OPENAI_API_KEY")
     return jsonify({
-        'fixes': fixes
+        "has_key": bool(api_key),
+        "has_openai": has_openai,
+        "key_length": len(api_key) if api_key else 0,
+        "key_prefix": api_key[:4] + "..." if api_key and len(api_key) > 8 else None
     })
 
 @app.route('/static/<path:path>')
