@@ -130,7 +130,7 @@
                 <div class="card-body">
                     <div class="row">
                         <div class="col-md-6">
-                            <a href="#" class="btn btn-success w-100 mb-2">Generate All Fixes</a>
+                            <a href="#" id="generate-fixes-btn" class="btn btn-success w-100 mb-2">Generate All Fixes</a>
                         </div>
                         <div class="col-md-6">
                             <a href="#" class="btn btn-outline-primary w-100 mb-2">View Files</a>
@@ -157,17 +157,21 @@
             const uploadContainer = document.querySelector('.upload-container');
             const progressContainer = document.querySelector('.progress-container');
             const resultsContainer = document.querySelector('.results-container');
-            
+            const generateFixesBtn = document.getElementById('generate-fixes-btn');
+
+            // Store scan results globally
+            let scanResults = null;
+
             form.addEventListener('submit', function(e) {
                 e.preventDefault();
-                
+
                 // Show progress indicator
                 uploadContainer.style.display = 'none';
                 progressContainer.style.display = 'block';
-                
+
                 // Prepare form data
                 const formData = new FormData(form);
-                
+
                 // Send AJAX request
                 fetch('/scan', {
                     method: 'POST',
@@ -180,18 +184,21 @@
                     return response.json();
                 })
                 .then(data => {
+                    // Store scan results
+                    scanResults = data;
+
                     // Hide progress indicator
                     progressContainer.style.display = 'none';
-                    
+
                     // Update results
                     document.getElementById('repo-score').textContent = data.repo_score.toFixed(2);
                     document.getElementById('total-debt-items').textContent = data.total_debt_items;
                     document.getElementById('total-loc').textContent = data.total_loc.toLocaleString();
-                    
+
                     // Update debt by type
                     const debtByTypeContainer = document.getElementById('debt-by-type');
                     debtByTypeContainer.innerHTML = '';
-                    
+
                     for (const [type, count] of Object.entries(data.items_by_type)) {
                         const debtTypeHTML = `
                             <div class="col-md-4 mb-3">
@@ -205,25 +212,241 @@
                         `;
                         debtByTypeContainer.innerHTML += debtTypeHTML;
                     }
-                    
+
                     // Show results
                     resultsContainer.style.display = 'block';
                 })
                 .catch(error => {
                     console.error('Error:', error);
                     alert('An error occurred while scanning the repository. Please try again.');
-                    
+
                     // Reset UI
                     progressContainer.style.display = 'none';
                     uploadContainer.style.display = 'block';
                 });
             });
-            
+
+            // Handle Generate All Fixes button click
+            generateFixesBtn.addEventListener('click', function(e) {
+                e.preventDefault();
+
+                // Check if we have scan results
+                if (!scanResults) {
+                    alert('Please scan a repository first to get debt items.');
+                    return;
+                }
+
+                // Change button text and disable it during processing
+                const originalBtnText = generateFixesBtn.textContent;
+                generateFixesBtn.textContent = 'Generating fixes...';
+                generateFixesBtn.disabled = true;
+
+                // For demo, create mock code snippets from our debt types
+                const mockSnippets = [];
+
+                // Create a sample snippet for each debt type
+                Object.entries(scanResults.items_by_type).forEach(([type, count], index) => {
+                    // Include at least one snippet for each type
+                    const snippetCount = Math.min(count, 1);
+
+                    for (let i = 0; i < snippetCount; i++) {
+                        // Create a mock code snippet based on the debt type
+                        let code = '';
+
+                        switch (type) {
+                            case 'long_function':
+                                code = `def very_long_function(a, b, c, d, e):
+    # This is a long function with too many lines
+    result = 0
+    if a > 0:
+        result += a
+    if b > 0:
+        result += b
+    if c > 0:
+        result += c
+    if d > 0:
+        result += d
+    if e > 0:
+        result += e
+    # ... imagine many more lines here
+    return result`;
+                                break;
+                            case 'high_complexity':
+                                code = `def complex_function(value, options):
+    if value < 10:
+        if options.get('flag1'):
+            if options.get('flag2'):
+                return 'case 1'
+            else:
+                if options.get('flag3'):
+                    return 'case 2'
+                else:
+                    return 'case 3'
+        else:
+            if options.get('flag4'):
+                if value < 5:
+                    return 'case 4'
+                else:
+                    return 'case 5'
+            else:
+                return 'case 6'
+    else:
+        return 'case 7'`;
+                                break;
+                            case 'code_duplication':
+                                code = `def process_users(users):
+    # This has duplicate code
+    for user in users:
+        name = user.get('name', '')
+        email = user.get('email', '')
+        print(f"Processing {name} with email {email}")
+        # Send welcome email
+        if email:
+            print(f"Sending email to {email}")
+            print(f"Email subject: Welcome {name}")
+            print("Email body: Thank you for registering")
+            print("Email sent!")
+
+def process_admins(admins):
+    # This repeats code from process_users
+    for admin in admins:
+        name = admin.get('name', '')
+        email = admin.get('email', '')
+        print(f"Processing admin {name} with email {email}")
+        # Send welcome email - duplicate code
+        if email:
+            print(f"Sending email to {email}")
+            print(f"Email subject: Welcome admin {name}")
+            print("Email body: Thank you for becoming an admin")
+            print("Email sent!")`;
+                                break;
+                            default:
+                                code = `# Sample code for ${formatDebtType(type)}
+def sample_function():
+    print("This needs refactoring")
+    return True`;
+                        }
+
+                        mockSnippets.push({
+                            id: `${type}_${i}`,
+                            code: code
+                        });
+                    }
+                });
+
+                // Send to the API
+                fetch('/generate-fixes', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        snippets: mockSnippets
+                    })
+                })
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Network response was not ok');
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    // Create a modal to show the fixes
+                    createFixesModal(data.fixes);
+
+                    // Reset button
+                    generateFixesBtn.textContent = originalBtnText;
+                    generateFixesBtn.disabled = false;
+
+                    // Show modal
+                    const fixesModal = new bootstrap.Modal(document.getElementById('fixes-modal'));
+                    fixesModal.show();
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('An error occurred while generating fixes. Please try again.');
+
+                    // Reset button
+                    generateFixesBtn.textContent = originalBtnText;
+                    generateFixesBtn.disabled = false;
+                });
+            });
+
             // Helper function to format debt type
             function formatDebtType(type) {
                 return type.split('_')
                     .map(word => word.charAt(0).toUpperCase() + word.slice(1))
                     .join(' ');
+            }
+
+            // Helper function to create fixes modal
+            function createFixesModal(fixes) {
+                // Remove existing modal if any
+                const existingModal = document.getElementById('fixes-modal');
+                if (existingModal) {
+                    existingModal.remove();
+                }
+
+                // Create modal HTML
+                const modalHTML = `
+                <div class="modal fade" id="fixes-modal" tabindex="-1" aria-labelledby="fixes-modal-label" aria-hidden="true">
+                    <div class="modal-dialog modal-xl modal-dialog-scrollable">
+                        <div class="modal-content">
+                            <div class="modal-header">
+                                <h5 class="modal-title" id="fixes-modal-label">Generated Fixes</h5>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                            </div>
+                            <div class="modal-body">
+                                ${fixes.map((fix, index) => `
+                                    <div class="card mb-4">
+                                        <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                                            <span>Fix #${index + 1}: ${formatDebtType(fix.id.split('_')[0])}</span>
+                                            <span class="badge ${fix.status === 'success' ? 'bg-success' : 'bg-danger'}">${fix.status}</span>
+                                        </div>
+                                        <div class="card-body">
+                                            ${fix.status === 'success' ? `
+                                                <div class="row">
+                                                    <div class="col-md-6">
+                                                        <h6>Original Code</h6>
+                                                        <pre class="bg-dark text-light p-3" style="border-radius: 5px; overflow: auto; max-height: 300px;">${escapeHtml(fix.original)}</pre>
+                                                    </div>
+                                                    <div class="col-md-6">
+                                                        <h6>Refactored Code</h6>
+                                                        <pre class="bg-dark text-light p-3" style="border-radius: 5px; overflow: auto; max-height: 300px;">${escapeHtml(fix.refactored)}</pre>
+                                                    </div>
+                                                </div>
+                                            ` : `
+                                                <div class="alert alert-danger">
+                                                    ${fix.error || 'Unknown error occurred'}
+                                                </div>
+                                                <h6>Original Code</h6>
+                                                <pre class="bg-dark text-light p-3" style="border-radius: 5px; overflow: auto; max-height: 300px;">${escapeHtml(fix.original)}</pre>
+                                            `}
+                                        </div>
+                                    </div>
+                                `).join('')}
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                                <button type="button" class="btn btn-primary" disabled>Apply All Fixes</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                `;
+
+                // Add modal to body
+                document.body.insertAdjacentHTML('beforeend', modalHTML);
+            }
+
+            // Helper function to escape HTML
+            function escapeHtml(unsafe) {
+                return unsafe
+                    .replace(/&/g, "&amp;")
+                    .replace(/</g, "&lt;")
+                    .replace(/>/g, "&gt;")
+                    .replace(/"/g, "&quot;")
+                    .replace(/'/g, "&#039;");
             }
         });
     </script>
