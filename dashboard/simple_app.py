@@ -2,28 +2,34 @@ import os
 import time
 from flask import Flask, render_template, send_from_directory, request, jsonify
 try:
-    import openai
+    from openai import OpenAI
+    has_openai = True
 except ImportError:
     # Handle case where openai is not installed
-    openai = None
+    has_openai = False
+    OpenAI = None
 
 app = Flask(__name__)
 
-# Configure OpenAI API key if available
-if openai:
-    openai.api_key = os.getenv("OPENAI_API_KEY")
+# Create OpenAI client if library is available
+client = None
+if has_openai:
+    client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 def refactor_snippet(snippet, system_prompt, retries=3):
     """
     Refactor a code snippet using GPT-4o-mini.
     Includes retry logic with exponential backoff.
     """
-    if not openai:
+    if not has_openai:
         return "OpenAI library not installed. Please install with: pip install openai"
-
+    
+    if not client:
+        return "OpenAI API key not set. Please set the OPENAI_API_KEY environment variable."
+    
     for attempt in range(retries):
         try:
-            response = openai.ChatCompletion.create(
+            response = client.chat.completions.create(
                 model="gpt-4o-mini",
                 messages=[
                     {"role": "system", "content": system_prompt},
@@ -38,14 +44,14 @@ def refactor_snippet(snippet, system_prompt, retries=3):
             return response.choices[0].message.content
         except Exception as e:
             # Handle all exceptions in a generic way for robustness
-            if hasattr(e, '__module__') and e.__module__ == 'openai.error' and 'RateLimitError' in str(type(e)):
+            if "RateLimitError" in str(type(e)):
                 backoff = 2 ** attempt
                 print(f"Rate limit hit, retrying in {backoff}s...")
                 time.sleep(backoff)
             else:
                 print(f"API error: {str(e)}")
                 raise
-
+    
     # If we've exhausted all retries
     raise RuntimeError("Max retries reached for LLM refactor")
 
@@ -69,7 +75,7 @@ def scan():
                 'code_duplication': 3
             }
         })
-
+    
     # GET request - show upload form
     return render_template('scan.html')
 
@@ -82,7 +88,7 @@ def generate_fixes():
     data = request.json
     snippets = data.get('snippets', [])
     fixes = []
-
+    
     system_prompt = """
     You are a senior Python developer specializing in code refactoring to eliminate technical debt.
     Your task is to refactor the provided code snippet to:
@@ -91,11 +97,11 @@ def generate_fixes():
     3. Eliminate code duplication through proper abstraction
     4. Apply appropriate design patterns
     5. Ensure PEP 8 compliance
-
+    
     Provide ONLY the refactored code as your response, with no explanations or annotations.
     The refactored code should maintain the same functionality but with better structure and readability.
     """
-
+    
     # Process each snippet
     for snippet in snippets:
         try:
@@ -114,7 +120,7 @@ def generate_fixes():
                 'status': 'error',
                 'error': str(e)
             })
-
+    
     return jsonify({
         'fixes': fixes
     })
