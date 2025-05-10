@@ -418,7 +418,13 @@ def sample_function():
                         });
 
                     // Also show simple alert for users who may dismiss the modal
-                    alert('An error occurred while generating fixes. Please see the error details for more information.');
+                    // Check if the error is related to rate limiting
+                    if (error.message && error.message.toLowerCase().includes('rate') ||
+                        error.toString().toLowerCase().includes('rate')) {
+                        alert('OpenAI API rate limits reached. The service is experiencing high demand. Please try again in a few minutes.');
+                    } else {
+                        alert('An error occurred while generating fixes. Please see the error details for more information.');
+                    }
 
                     // Reset button
                     generateFixesBtn.textContent = originalBtnText;

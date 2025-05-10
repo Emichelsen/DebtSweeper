@@ -14,10 +14,11 @@ try:
 except ImportError:
     pass  # OpenAI not installed
 
-def refactor_snippet(snippet, system_prompt, retries=3):
+def refactor_snippet(snippet, system_prompt, retries=8):
     """
     Refactor a code snippet using GPT-4o-mini.
     Includes retry logic with exponential backoff.
+    Uses a higher retry count and longer backoff for rate limits.
     """
     if not has_openai:
         return "OpenAI library not installed. Please install with: pip install openai"
@@ -74,13 +75,21 @@ def refactor_snippet(snippet, system_prompt, retries=3):
             return response.choices[0].message.content
         except Exception as e:
             # Handle all exceptions in a generic way for robustness
-            if "RateLimitError" in str(type(e)):
-                backoff = 2 ** attempt
-                print(f"Rate limit hit, retrying in {backoff}s...")
+            if "RateLimitError" in str(type(e)) or "rate_limit" in str(e).lower():
+                # Use a longer backoff (starting at 2 seconds, then 4, 8, 16, etc.)
+                backoff = 2 + (4 ** attempt)
+                print(f"Rate limit hit, retrying in {backoff}s... (Attempt {attempt+1}/{retries})")
                 time.sleep(backoff)
             else:
                 print(f"API error: {str(e)}")
-                raise
+
+                # Also retry on certain common errors
+                if "timeout" in str(e).lower() or "connection" in str(e).lower():
+                    backoff = 2 ** attempt
+                    print(f"Network error, retrying in {backoff}s...")
+                    time.sleep(backoff)
+                else:
+                    raise
 
     # If we've exhausted all retries
     raise RuntimeError("Max retries reached for LLM refactor")
